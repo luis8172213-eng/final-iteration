@@ -217,6 +217,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/debug/decrypt/otp', [DebugController::class, 'issueDecryptOtp'])->name('debug.decrypt.otp');
     Route::post('/debug/decrypt/otp/resend', [DebugController::class, 'resendDecryptOtp'])->name('debug.decrypt.otp.resend');
     Route::post('/debug/decrypt/otp-verify', [DebugController::class, 'verifyDecryptOtp'])->name('debug.decrypt.otp.verify');
+    Route::get('/debug/decrypt/user-details', [DebugController::class, 'getUserDetails'])->name('debug.decrypt.user-details');
     Route::post('/debug/decrypt', [DebugController::class, 'decrypt'])->name('debug.decrypt');
 
     // Admin portal routes (hidden / secret access only)

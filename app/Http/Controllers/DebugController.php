@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class DebugController extends Controller
 {
     /**
-     * Show the OTP request form before decrypt utility access.
+     * Show the decrypt utility with member selection.
      */
     public function showDecryptForm()
     {
@@ -17,12 +17,14 @@ class DebugController extends Controller
             return redirect()->route('home');
         }
 
-        // If user has already verified OTP for this session, skip to decrypt form
-        if (session('decrypt_otp_verified')) {
-            return view('debug.decrypt');
+        if (! session('decrypt_otp_verified')) {
+            return view('debug.decrypt-otp');
         }
 
-        return view('debug.decrypt-otp');
+        // Fetch all users for the dropdown
+        $users = \App\Models\User::select('id', 'name', 'email')->orderBy('name')->get();
+
+        return view('debug.decrypt', ['users' => $users]);
     }
 
     /**
@@ -116,7 +118,29 @@ class DebugController extends Controller
     }
 
     /**
-     * Decrypt the submitted Laravel encrypted string.
+     * Get user details for auto-filling fields (AJAX endpoint).
+     */
+    public function getUserDetails(Request $request)
+    {
+        if (! auth()->check() || ! auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        $request->validate(['user_id' => 'required|integer|exists:users,id']);
+
+        $user = \App\Models\User::findOrFail($request->input('user_id'));
+
+        return response()->json([
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone ?? 'N/A',
+            'email_encrypted' => $user->getRawOriginal('email'),
+            'phone_encrypted' => $user->getRawOriginal('phone'),
+        ]);
+    }
+
+    /**
+     * Decrypt and display user information.
      */
     public function decrypt(Request $request)
     {
@@ -128,20 +152,24 @@ class DebugController extends Controller
             return redirect()->route('debug.decrypt.form');
         }
 
-        $request->validate([
-            'cipher' => 'required|string',
-        ]);
+        $request->validate(['user_id' => 'required|integer|exists:users,id']);
 
-        try {
-            $plaintext = Crypt::decryptString($request->input('cipher'));
-        } catch (\Throwable $e) {
-            $plaintext = null;
-        }
+        $user = \App\Models\User::findOrFail($request->input('user_id'));
+
+        // Fetch all users for dropdown
+        $users = \App\Models\User::select('id', 'name', 'email')->orderBy('name')->get();
+
+        // Prepare decrypted user data
+        $decryptedData = [
+            'user' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone ?? 'N/A',
+        ];
 
         return view('debug.decrypt', [
-            'cipher' => $request->input('cipher'),
-            'plaintext' => $plaintext,
-            'error' => $plaintext === null ? 'Unable to decrypt. Value may not be a valid Laravel encrypted string or APP_KEY may differ.' : null,
+            'users' => $users,
+            'selectedUserId' => $user->id,
+            'decrypted' => $decryptedData,
         ]);
     }
 }
