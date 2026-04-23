@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Otp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -20,15 +21,11 @@ class AuthController extends Controller
      */
     public function showLogin()
     {
-        // Clean up previous OTP log entries before rendering the login page.
-        // This helps avoid stale or expired 2FA codes being reused.
-        $this->cleanupOtpLogFile();
-
         $pendingUserId = session('pending_2fa_user_id');
         if ($pendingUserId) {
-            $user = User::find($pendingUserId);
+            $otp = Otp::where('user_id', $pendingUserId)->latest()->first();
 
-            if (! $user || ($user->getAttribute('2fa_expires_at') && $user->getAttribute('2fa_expires_at')->isPast())) {
+            if (! $otp || $otp->isExpired()) {
                 session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_admin_2fa']);
             }
         }
@@ -41,8 +38,6 @@ class AuthController extends Controller
      */
     public function showAdminLogin()
     {
-        $this->cleanupOtpLogFile();
-
         session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_admin_2fa']);
 
         return view('auth.admin-login');
@@ -65,7 +60,7 @@ class AuthController extends Controller
      */
     public function loginAdmin(Request $request)
     {
-        // Validate the admin credentials first. This is a hidden admin login route.
+        // Check admin email and password. This route is hidden from regular users.
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'min:5', 'max:30'],
@@ -129,8 +124,8 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // Validate user credentials and prepare for login.
-        // This route handles regular user login and may issue a 2FA OTP if enabled.
+        // Check the user's email and password
+        // If they have 2FA enabled, I'll send them a code
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'min:5', 'max:30'],
@@ -201,28 +196,31 @@ class AuthController extends Controller
 
     private function issueOtp(User $user)
     {
-        // Generate a fresh one-time password for 2FA and record it in the database.
-        // This OTP is hashed and expires after 30 seconds.
+        // Create a brand new one-time password (OTP) for 2FA
+        // Hash it and set to expire in 30 seconds
         logger()->debug('issueOtp called', ['user_id' => $user->id, 'email' => $user->email]);
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        $this->cleanupOtpLogFile($user->email);
+        // Delete any existing active OTPs for this user
+        Otp::where('user_id', $user->id)->delete();
 
-        $user->update([
-            '2fa_code' => Hash::make($otp),
-            '2fa_expires_at' => now()->addSeconds(30),
-            '2fa_attempts' => 0,
+        // Create new OTP record in database
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => Hash::make($otpCode),
+            'expires_at' => now()->addSeconds(30),
+            'attempts' => 0,
         ]);
 
-        $this->logOtp($user, $otp);
+        $this->logOtp($user, $otpCode);
 
         session()->put('time_left', 30);
     }
 
     private function logOtp(User $user, string $otp): void
     {
-        // Log the generated OTP to a local file for testing and verification.
-        // In production, this would be replaced with email or SMS delivery.
+        // Save the OTP to a file for testing
+        // In production, would be sent via email or SMS
         $logPath = storage_path('logs/otp.log');
         $expiresAt = now()->addSeconds(30)->toDateTimeString();
 
@@ -236,68 +234,7 @@ class AuthController extends Controller
         File::append($logPath, $entry);
     }
 
-    private function cleanupOtpLogFile(string $currentEmail = null): void
-    {
-        $logPath = storage_path('logs/otp.log');
-
-        if (! File::exists($logPath)) {
-            return;
-        }
-
-        $content = str_replace(["\r\n", "\r"], "\n", trim(File::get($logPath)));
-        if ($content === '') {
-            return;
-        }
-
-        $blocks = preg_split('/\n-{3,}\n/', $content, -1, PREG_SPLIT_NO_EMPTY);
-        $remaining = [];
-
-        foreach ($blocks as $block) {
-            $block = trim($block);
-            if (! $block) {
-                continue;
-            }
-
-            $email = null;
-            $expiresAt = null;
-            $data = json_decode($block, true);
-
-            if (is_array($data) && ! empty($data['email']) && ! empty($data['expires_at'])) {
-                $email = $data['email'];
-                $expiresAt = Carbon::parse($data['expires_at']);
-            } else {
-                if (preg_match('/^Email:\s*(.+)$/mi', $block, $emailMatches)) {
-                    $email = trim($emailMatches[1]);
-                }
-
-                if (preg_match('/^Time of Expiration:\s*(.+)$/mi', $block, $expiresMatches)) {
-                    try {
-                        $expiresAt = Carbon::parse(trim($expiresMatches[1]));
-                    } catch (\Exception $e) {
-                        $expiresAt = null;
-                    }
-                }
-            }
-
-            if (! $email || ! $expiresAt || $expiresAt->isPast()) {
-                continue;
-            }
-
-            if ($currentEmail && $email === $currentEmail) {
-                continue;
-            }
-
-            $remaining[] = $block;
-        }
-
-        if (count($remaining) === 0) {
-            File::put($logPath, '');
-            return;
-        }
-
-        File::put($logPath, implode("\n\n---\n\n", $remaining) . "\n\n");
-    }
-
+    
     public function showProfile()
     {
         return view('profile');
@@ -321,8 +258,8 @@ class AuthController extends Controller
         ];
 
         if ($request->phone) {
-            // If phone starts with + (country code format), use as-is
-            // Otherwise, prepend country code
+            // If the phone number already has a country code (starts with +), keep it
+            // Otherwise, I'll add the country code they selected
             if (str_starts_with($request->phone, '+')) {
                 $data['phone'] = $request->phone;
             } else {
@@ -427,6 +364,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'profile_picture' => 'profile_pictures/default-avatar.png', // Default avatar
         ]);
 
         Auth::login($user);
@@ -444,17 +382,14 @@ class AuthController extends Controller
             return redirect('/login');
         }
 
-        $user = User::find($userId);
+        $otp = Otp::where('user_id', $userId)->latest()->first();
 
-        if (! $user || ! $user->getAttribute('2fa_expires_at') || $user->getAttribute('2fa_expires_at')->isPast()) {
-            if ($user) {
-                $this->cleanupOtpLogFile($user->email);
-            }
+        if (! $otp || $otp->isExpired()) {
             $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left']);
             return redirect('/login')->with('error', '2FA code expired. Please login again.');
         }
 
-        $timeLeft = $user->getAttribute('2fa_expires_at')->diffInSeconds(now(), false);
+        $timeLeft = $otp->expires_at->diffInSeconds(now(), false);
 
         return view('auth.2fa-verify', compact('timeLeft'));
     }
@@ -470,21 +405,16 @@ class AuthController extends Controller
 
         $userId = session('pending_2fa_user_id');
         $user = User::findOrFail($userId);
+        $otp = Otp::where('user_id', $userId)->latest()->first();
 
-        if (! $user->getAttribute('2fa_expires_at') || $user->getAttribute('2fa_attempts') >= 3 || $user->getAttribute('2fa_expires_at')->isPast()) {
+        if (! $otp || ! $otp->isValid()) {
             return back()->with([
                 'show_2fa_modal' => true,
             ])->withErrors(['otp' => 'Code expired or too many attempts. Please resend a new code.']);
         }
 
-        if (Hash::check($request->otp, $user->getAttribute('2fa_code'))) {
-            $user->update([
-                '2fa_code' => null,
-                '2fa_expires_at' => null,
-                '2fa_attempts' => 0,
-            ]);
-
-            $this->cleanupOtpLogFile($user->email);
+        if (Hash::check($request->otp, $otp->code)) {
+            $otp->delete();
 
             $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left']);
             $isAdminLogin = session()->pull('pending_admin_2fa', false);
@@ -500,7 +430,7 @@ class AuthController extends Controller
             return $response;
         }
 
-        $user->increment('2fa_attempts');
+        $otp->incrementAttempts();
         return back()->with([
             'show_2fa_modal' => true,
         ])->withErrors(['otp' => 'Invalid code. Try again.']);
@@ -546,11 +476,7 @@ class AuthController extends Controller
     {
         $user = Auth::user();
         if ($user) {
-            $user->update([
-                '2fa_code' => null,
-                '2fa_expires_at' => null,
-                '2fa_attempts' => 0,
-            ]);
+            Otp::where('user_id', $user->id)->delete();
         }
         Auth::logout();
         $request->session()->invalidate();
@@ -577,13 +503,13 @@ class AuthController extends Controller
     public function handleGoogleCallback()
     {
         try {
-            // Disable SSL verification for local development
+            // Skip SSL checking for testing on localhost
             $httpClient = new Client(['verify' => false]);
             $googleUser = Socialite::driver('google')
                 ->setHttpClient($httpClient)
                 ->user();
         } catch (\Exception $e) {
-            // Log the actual error for debugging
+            // Record the error for debugging
             \Log::error('Google OAuth Error: ' . $e->getMessage());
             return redirect('/login')->with('error', 'Failed to authenticate with Google.');
         }
@@ -597,11 +523,11 @@ class AuthController extends Controller
             $user = User::create([
                 'name' => $googleUser->getName() ?: 'User',
                 'email' => $googleUser->getEmail(),
-                'password' => Hash::make(Str::random(16)), // Random password since they logged in via Google
+                'password' => Hash::make(Str::random(16)), // They logged in with Google, so I create a random password for them
             ]);
         }
 
-        // Log in the user
+        // Sign them in right away
         Auth::login($user);
         $request = request();
         $request->session()->regenerate();

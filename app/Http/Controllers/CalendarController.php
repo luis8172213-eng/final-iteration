@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\Notification;
 
 class CalendarController extends Controller
 {
-    // Fetch reservations as events for FullCalendar
+    // Get all reservations and format them as calendar events
     public function events(Request $request)
     {
-        // This endpoint returns JSON event objects for the calendar UI.
-        // It optionally filters by facility name if provided in the query string.
+        // I return JSON data that the calendar can display
+        // If someone asks for a specific facility, I filter by that
         $facilityName = $request->query('facility');
         $query = Reservation::with('facility');
         if ($facilityName) {
@@ -26,9 +26,9 @@ class CalendarController extends Controller
         }
         $reservations = $query->get();
         $events = $reservations->map(function ($reservation) {
-            // Ensure proper ISO 8601 format for FullCalendar
+            // Format the dates and times so the calendar can understand them
             $dateStr = $reservation->reservation_date->format('Y-m-d');
-            // Get the time values properly - format from the datetime casts
+            // Make sure times are in the right format (hours:minutes:seconds)
             $startTime = $reservation->start_time->format('H:i:00');
             $endTime = $reservation->end_time->format('H:i:00');
             $start = $dateStr . 'T' . $startTime;
@@ -50,11 +50,11 @@ class CalendarController extends Controller
         return response()->json($events);
     }
 
-    // Store a new reservation
+    // Save a new reservation to the database
     public function store(Request $request)
     {
-        // Validate the reservation details submitted from the frontend.
-        // If validation passes, the reservation is stored as pending and admins are notified.
+        // First, I validate that all the required info is provided
+        // Then I check if the room is actually available at that time
         $request->validate([
             'facility' => 'required|string',
             'purpose' => 'required|string|max:255',
@@ -85,10 +85,10 @@ class CalendarController extends Controller
         return response()->json(['success' => true, 'reservation' => $reservation]);
     }
 
-    // Generate a unique, distinct color for each reservation based on its ID
+    // Pick a color for each reservation so they look different on the calendar
     private function getReservationColor($reservationId)
     {
-        // Palette of 24 distinct, non-duplicating colors with good contrast
+        // I have 24 nice colors that all look good together
         $colors = [
             '#FF6B6B',  // Vibrant Red
             '#4ECDC4',  // Turquoise
@@ -116,7 +116,7 @@ class CalendarController extends Controller
             '#1D3557',  // Navy Blue
         ];
         
-        // Use modulo to cycle through colors based on reservation ID
+        // I cycle through the colors based on the reservation ID so each one gets a different color
         $colorIndex = (intval($reservationId) % count($colors));
         return $colors[$colorIndex];
     }

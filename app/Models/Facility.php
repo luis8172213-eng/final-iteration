@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Facility extends Model
 {
     /**
-     * The attributes that are mass assignable.
+     * Fields I can assign when creating/updating a facility.
      */
     protected $fillable = [
         'name',
@@ -24,7 +24,7 @@ class Facility extends Model
     ];
 
     /**
-     * The attributes that should be cast.
+     * Tell Laravel what type each field is (arrays, booleans, etc.)
      */
     protected $casts = [
         'amenities' => 'array',
@@ -33,7 +33,7 @@ class Facility extends Model
     ];
 
     /**
-     * Get the reservations for the facility.
+     * Link to all reservations for this facility.
      */
     public function reservations(): HasMany
     {
@@ -41,7 +41,7 @@ class Facility extends Model
     }
 
     /**
-     * Get the type label.
+     * Get a readable name for the facility type.
      */
     public function getTypeLabelAttribute(): string
     {
@@ -58,7 +58,7 @@ class Facility extends Model
     }
 
     /**
-     * Scope to get only active facilities.
+     * Only return active facilities.
      */
     public function scopeActive($query)
     {
@@ -66,12 +66,12 @@ class Facility extends Model
     }
 
     /**
-     * Check if facility is available at a given date and time.
+     * Check if this room is free at a specific date and time.
      */
     public function isAvailable($date, $startTime, $endTime, $excludeReservationId = null): bool
     {
-        // Check for overlapping pending or approved reservations for this facility.
-        // Reservations conflict if times overlap or one contains the other.
+        // I look for any pending or approved reservations that overlap with the requested time
+        // If times overlap in any way, the room is taken
         $query = $this->reservations()
             ->where('reservation_date', $date)
             ->whereIn('status', ['pending', 'approved'])

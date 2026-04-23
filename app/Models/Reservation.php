@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Reservation extends Model
 {
     /**
-     * The attributes that are mass assignable.
+     * Fields I can set when creating/updating a reservation.
      */
     protected $fillable = [
         'user_id',
@@ -24,7 +24,7 @@ class Reservation extends Model
     ];
 
     /**
-     * The attributes that should be cast.
+     * Here I tell Laravel what type each field is (dates, times, etc.)
      */
     protected $casts = [
         'reservation_date' => 'date',
@@ -33,7 +33,7 @@ class Reservation extends Model
     ];
 
     /**
-     * Get the user that owns the reservation.
+     * Link to the user who made this reservation.
      */
     public function user(): BelongsTo
     {
@@ -41,7 +41,7 @@ class Reservation extends Model
     }
 
     /**
-     * Get the facility for the reservation.
+     * Link to the facility being reserved.
      */
     public function facility(): BelongsTo
     {
@@ -49,7 +49,7 @@ class Reservation extends Model
     }
 
     /**
-     * Get the status label with color class.
+     * Get a nice label and color for the current status.
      */
     public function getStatusBadgeAttribute(): array
     {

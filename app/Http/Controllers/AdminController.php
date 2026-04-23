@@ -12,7 +12,8 @@ class AdminController extends Controller
 {
     private function requireAdmin()
     {
-        // Ensure the current user is logged in and has admin privileges.
+        // I check that the user is logged in and is an admin
+        // If not, I block them from accessing this page
         if (! Auth::check() || ! Auth::user()->isAdmin()) {
             abort(403, 'Admin access only.');
         }
@@ -20,7 +21,8 @@ class AdminController extends Controller
 
     private function requireSuperAdmin()
     {
-        // Ensure the current user is the head admin before allowing super-admin actions.
+        // Only the head admin can access super-admin features
+        // I block everyone else
         if (! Auth::check() || ! Auth::user()->isSuperAdmin()) {
             abort(403, 'Head admin access only.');
         }
@@ -28,7 +30,7 @@ class AdminController extends Controller
 
     public function dashboard(Request $request)
     {
-        // Admin dashboard shows pending approvals, recent actions, and user search.
+        // Show the admin dashboard with pending requests, recent activity, and user search
         $this->requireAdmin();
 
         $pendingReservations = Reservation::with(['user', 'facility'])
@@ -68,7 +70,7 @@ class AdminController extends Controller
 
     public function approve(Request $request, Reservation $reservation)
     {
-        // Approve a pending reservation and notify the requestor.
+        // Mark the reservation as approved and send the user a notification
         $this->requireAdmin();
 
         if ($reservation->status !== 'pending') {
@@ -96,7 +98,7 @@ class AdminController extends Controller
 
     public function reject(Request $request, Reservation $reservation)
     {
-        // Reject a pending reservation and notify the user of the rejection.
+        // Mark the reservation as rejected and let the user know
         $this->requireAdmin();
 
         if ($reservation->status !== 'pending') {

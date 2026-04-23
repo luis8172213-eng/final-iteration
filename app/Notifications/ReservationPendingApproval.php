@@ -10,7 +10,7 @@ class ReservationPendingApproval extends Notification
 {
     use Queueable;
 
-    // Reservation object used to build the approval request notification payload.
+    // I keep the reservation data so I can include details in the notification
     public Reservation $reservation;
 
     public function __construct(Reservation $reservation)

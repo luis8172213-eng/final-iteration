@@ -8,8 +8,8 @@ use App\Models\Facility;
 class FacilityController extends Controller
 {
     /**
-     * Return a JSON list of active facility names.
-     * Used by the reservation form or frontend dropdowns when selecting a room.
+     * Send a list of all active facilities to the frontend as JSON.
+     * The form uses this to populate the room dropdown.
      */
     public function list()
     {

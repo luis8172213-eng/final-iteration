@@ -10,7 +10,7 @@ class NotificationController extends Controller
 {
     public function index()
     {
-        // Load the current user's notifications, paginated for display.
+        // Get the logged-in user's notifications, showing the newest first, with 15 per page
         $notifications = auth()->user()->notifications()->latest()->paginate(15);
 
         return view('notifications.index', compact('notifications'));
@@ -18,7 +18,7 @@ class NotificationController extends Controller
 
     public function markAllRead(Request $request)
     {
-        // Mark all unread notifications as read for the current user.
+        // Mark all the user's unread notifications as read
         auth()->user()->unreadNotifications->markAsRead();
 
         return back();
@@ -26,9 +26,9 @@ class NotificationController extends Controller
 
     public function destroySelected(Request $request)
     {
-        // Remove the selected notifications from the database.
-        // If a notification refers to a pending reservation approval request,
-        // also delete the associated reservation to keep state consistent.
+        // Delete selected notifications
+        // If the notification is about a pending reservation, I also delete that reservation
+        // This keeps everything in sync
         $request->validate([
             'selected_notifications' => 'array',
             'selected_notifications.*' => 'string',

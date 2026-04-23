@@ -12,30 +12,29 @@ class SecurityHeaders
     {
         $response = $next($request);
 
-        // Remove server-level leak from PHP runtime
-        @header_remove('X-Powered-By');
-        @header_remove('Server');
-        @ini_set('expose_php', 'Off');
+        // Remove headers that leak info about server software being used
+        // Harder for attackers to find vulnerabilities specific to this setup
 
-        // Ensure we're working with a Response object
+        // Check if working with a Response object before adding headers
         if ($response instanceof \Illuminate\Http\Response || $response instanceof Response) {
-            // Anti-clickjacking headers
+            // Prevent site from being framed in other websites
             $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
             
-            // Content-type security
+            // Prevent browsers from guessing what type of content is being sent
             $response->headers->set('X-Content-Type-Options', 'nosniff');
             
-            // Security policies
+            // Set security policies for what resources can be accessed
             $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
             $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
             $response->headers->set('X-XSS-Protection', '1; mode=block');
             
-            // Cache control (prevent information leakage)
+            // Tell browsers not to cache sensitive pages, prevents showing old versions
             $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             $response->headers->set('Pragma', 'no-cache');
             $response->headers->set('Expires', '0');
             
-            // Content Security Policy
+            // Set up strong Content Security Policy rules
+            // Controls what resources (scripts, images, etc) can load on this site
             $cspDirectives = [
                 "default-src 'self'",
                 "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
@@ -66,7 +65,7 @@ class SecurityHeaders
 
             $response->headers->set('Content-Security-Policy', implode('; ', $cspDirectives) . ';');
 
-            // HSTS (Strict-Transport-Security) - always set
+            // HSTS (Strict-Transport-Security) always set
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
         }
 

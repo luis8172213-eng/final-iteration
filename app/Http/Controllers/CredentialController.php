@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 class CredentialController extends Controller
 {
     /**
-     * Display a listing of the user's credentials.
+     * Show all the user's saved passwords/credentials.
      */
     public function index()
     {
@@ -18,7 +18,7 @@ class CredentialController extends Controller
     }
 
     /**
-     * Show the form for creating a new credential.
+     * Show the form to create a new saved credential.
      */
     public function create()
     {
@@ -26,8 +26,8 @@ class CredentialController extends Controller
     }
 
     /**
-     * Store a newly created credential in storage.
-     * All fields are automatically AES encrypted by the model.
+     * Save the new credential to the database.
+     * Everything I save here gets encrypted automatically by the model.
      */
     public function store(Request $request)
     {
@@ -48,11 +48,11 @@ class CredentialController extends Controller
     }
 
     /**
-     * Display the specified credential.
+     * Show a single credential (only if the user owns it).
      */
     public function show(SavedCredential $credential)
     {
-        // Ensure user owns this credential
+        // Make sure this credential belongs to the logged-in user
         if ($credential->user_id !== Auth::id()) {
             abort(403);
         }
@@ -61,11 +61,11 @@ class CredentialController extends Controller
     }
 
     /**
-     * Show the form for editing the specified credential.
+     * Show the form to edit a credential.
      */
     public function edit(SavedCredential $credential)
     {
-        // Ensure user owns this credential
+        // Make sure this credential belongs to the logged-in user
         if ($credential->user_id !== Auth::id()) {
             abort(403);
         }
@@ -74,11 +74,11 @@ class CredentialController extends Controller
     }
 
     /**
-     * Update the specified credential in storage.
+     * Save changes to an existing credential.
      */
     public function update(Request $request, SavedCredential $credential)
     {
-        // Ensure user owns this credential
+        // Make sure this credential belongs to the logged-in user
         if ($credential->user_id !== Auth::id()) {
             abort(403);
         }
@@ -98,11 +98,11 @@ class CredentialController extends Controller
     }
 
     /**
-     * Remove the specified credential from storage.
+     * Delete a credential from the database.
      */
     public function destroy(SavedCredential $credential)
     {
-        // Ensure user owns this credential
+        // Make sure this credential belongs to the logged-in user
         if ($credential->user_id !== Auth::id()) {
             abort(403);
         }
@@ -114,8 +114,7 @@ class CredentialController extends Controller
     }
 
     /**
-     * Get the decrypted password for a credential.
-     * Used for AJAX copy-to-clipboard functionality.
+     * Send back the decrypted password via AJAX (for copy-to-clipboard).
      */
     public function getPassword(SavedCredential $credential)
     {

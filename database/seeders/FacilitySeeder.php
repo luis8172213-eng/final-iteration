@@ -14,9 +14,19 @@ class FacilitySeeder extends Seeder
     public function run(): void
     {
         // Clear old facilities first - disable foreign key checks for truncate
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } else {
+            DB::statement('PRAGMA foreign_keys=OFF;');
+        }
+        
         Facility::truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } else {
+            DB::statement('PRAGMA foreign_keys=ON;');
+        }
 
         $facilities = [
             // Computer Labs

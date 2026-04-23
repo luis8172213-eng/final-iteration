@@ -54,16 +54,30 @@
                 </div>
                 
                 <div class="space-y-2">
-
                     <label for="password" class="block text-sm text-gray-700">Password</label>
                     <input
-
                         id="password"
                         name="password"
                         type="password"
                         required
                         class="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                     >
+                    
+                    <!-- Password Strength Meter -->
+                    <div class="mt-2">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs text-gray-600">Strength:</span>
+                            <div class="flex-1 h-2 bg-gray-300 rounded-full overflow-hidden">
+                                <div 
+                                    id="passwordStrengthBar" 
+                                    class="h-full w-0 transition-all duration-300 rounded-full"
+                                    style="background-color: #ef4444;"
+                                ></div>
+                            </div>
+                            <span id="passwordStrengthText" class="text-xs font-semibold text-red-600 w-16">Weak</span>
+                        </div>
+                    </div>
+                    
                     @error('password')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
@@ -84,12 +98,95 @@
                 <div class="flex justify-center pt-4">
                     <button
                         type="submit"
+                        id="submitBtn"
                         class="px-8 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
                     >
                         Sign Up
                     </button>
                 </div>
             </form>
+            
+            <script>
+                // Password strength checker
+                const passwordInput = document.getElementById('password');
+                const passwordConfirmInput = document.getElementById('password_confirmation');
+                const submitBtn = document.getElementById('submitBtn');
+                const strengthBar = document.getElementById('passwordStrengthBar');
+                const strengthText = document.getElementById('passwordStrengthText');
+
+                function checkPasswordStrength(password) {
+                    let strength = 0;
+                    let feedback = [];
+
+                    // Check length
+                    if (password.length >= 5) strength++;
+                    if (password.length >= 8) strength++;
+                    if (password.length >= 12) strength++;
+
+                    // Check lowercase
+                    if (/[a-z]/.test(password)) strength++;
+                    else feedback.push('lowercase');
+
+                    // Check uppercase
+                    if (/[A-Z]/.test(password)) strength++;
+                    else feedback.push('uppercase');
+
+                    // Check number
+                    if (/\d/.test(password)) strength++;
+                    else feedback.push('number');
+
+                    // Check special character
+                    if (/[!@#$%^&*()_+]/.test(password)) strength++;
+                    else feedback.push('special');
+
+                    return { strength, feedback };
+                }
+
+                function updatePasswordUI() {
+                    const password = passwordInput.value;
+                    const { strength, feedback } = checkPasswordStrength(password);
+
+                    // Determine strength level
+                    let level = 'Weak';
+                    let color = '#ef4444'; // Red
+                    let percentage = 25;
+
+                    if (strength >= 6 && strength < 8) {
+                        level = 'Moderate';
+                        color = '#f59e0b'; // Amber
+                        percentage = 50;
+                    } else if (strength >= 8) {
+                        level = 'Strong';
+                        color = '#10b981'; // Green
+                        percentage = 100;
+                    }
+
+                    // Update bar
+                    strengthBar.style.backgroundColor = color;
+                    strengthBar.style.width = percentage + '%';
+
+                    // Update text
+                    strengthText.textContent = level;
+                    strengthText.style.color = color;
+
+                    // Disable submit button if password is weak
+                    if (level === 'Weak') {
+                        submitBtn.disabled = true;
+                        submitBtn.style.opacity = '0.5';
+                        submitBtn.style.cursor = 'not-allowed';
+                    } else {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                        submitBtn.style.cursor = 'pointer';
+                    }
+                }
+
+                // Add event listener
+                passwordInput.addEventListener('input', updatePasswordUI);
+
+                // Initial check
+                updatePasswordUI();
+            </script>
             
             <div class="mt-6 text-center">
                 <p class="text-sm text-gray-600 mb-4">Or use below to create account</p>

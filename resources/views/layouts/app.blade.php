@@ -11,15 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class'
-        };
-        document.documentElement.classList.remove('dark');
-    </script>
-    <script src="https://cdn.tailwindcss.com" defer></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js" defer></script>
-    <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('styles')
 </head>
 <body class="min-h-screen bg-white text-slate-900 transition-colors duration-200">

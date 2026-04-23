@@ -12,7 +12,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * The attributes that can be assigned directly when creating or updating a user.
      *
      * @var array<int, string>
      */
@@ -23,9 +23,6 @@ class User extends Authenticatable
         'phone',
         'profile_picture',
         'two_fa_enabled',
-        '2fa_code',
-        '2fa_expires_at',
-        '2fa_attempts',
         'remember_device_token',
         'remember_device_expires_at',
         'is_admin',
@@ -33,7 +30,8 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * These fields are hidden when returning user data as JSON.
+     * Passwords, tokens, and sensitive admin flags should not be exposed.
      *
      * @var array<int, string>
      */
@@ -41,23 +39,19 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'email_hash',
-        '2fa_code',
-        '2fa_expires_at',
-        '2fa_attempts',
         'remember_device_token',
         'is_admin',
         'is_super_admin',
     ];
 
     /**
-     * The attributes that should be cast.
+     * Define field types for casts (dates, booleans, etc.).
      *
      * @var array<string, string>
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        '2fa_expires_at' => 'datetime',
         'remember_device_expires_at' => 'datetime',
         'two_fa_enabled' => 'boolean',
         'is_admin' => 'boolean',
@@ -65,7 +59,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the user's saved credentials.
+     * Link to the user's saved credentials.
      */
     public function savedCredentials()
     {
@@ -73,7 +67,15 @@ class User extends Authenticatable
     }
 
     /**
-     * AES Encrypt the user's name when storing
+     * Link to the user's OTP records.
+     */
+    public function otps()
+    {
+        return $this->hasMany(Otp::class);
+    }
+
+    /**
+     * Encrypts the user name when saving to prevent direct database access.
      */
     public function setNameAttribute($value)
     {
@@ -81,52 +83,52 @@ class User extends Authenticatable
     }
 
     /**
-     * Decrypt the user's name when retrieving
+     * Decrypts the user name when retrieving from database.
      */
     public function getNameAttribute($value)
     {
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return $value; // Return as-is if decryption fails
+            return $value; // Return unchanged if decryption fails
         }
     }
 
     /**
-     * AES Encrypt the user's email when storing
-     * Note: We store a hashed version for lookups
+     * Encrypts and hashes email on save.
+     * Hash is used for lookups while keeping the actual email encrypted.
      */
     public function setEmailAttribute($value)
     {
-        // Store the user's email encrypted in the database for privacy.
-        // Also store a hashed version for lookup and login comparisons.
+        // Save the encrypted email in the database
+        // Also save a hashed version for lookups without decrypting
         $this->attributes['email'] = Crypt::encryptString($value);
         $this->attributes['email_hash'] = hash('sha256', strtolower($value));
     }
 
     /**
-     * Decrypt the user's email when retrieving
+     * Decrypts email with error handling.
      */
     public function getEmailAttribute($value)
     {
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return $value; // Return as-is if decryption fails
+            return $value; // Return unchanged if decryption fails
         }
     }
 
     /**
-     * AES Encrypt the user's phone when storing
+     * Encrypts phone number for privacy. Allows null values.
      */
     public function setPhoneAttribute($value)
     {
-        // Encrypt phone numbers for secure storage, but allow null values.
+        // Save encrypted if provided, otherwise null
         $this->attributes['phone'] = $value ? Crypt::encryptString($value) : null;
     }
 
     /**
-     * Decrypt the user's phone when retrieving
+     * Decrypts phone number if it exists.
      */
     public function getPhoneAttribute($value)
     {
@@ -142,7 +144,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Check whether the user is an admin.
+     * Check if user is an admin.
      */
     public function isAdmin(): bool
     {

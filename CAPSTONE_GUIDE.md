@@ -2,323 +2,238 @@
 
 ## 1. Project Overview
 
-Campus Reserve is a Laravel-based reservation system that allows authenticated users to book facilities, manage reservations, receive notifications, and for admins to approve or reject reservation requests.
+Campus Reserve is a web application built with Laravel that enables users to reserve campus facilities. It features secure login with two-factor authentication, full reservation management, a visual calendar, real-time notifications, and an admin interface for reviewing bookings.
 
-Key responsibilities:
-- Authentication + 2FA
-- Reservation creation, editing, listing, and deletion
-- Calendar view of reservations
-- Notifications for approvals/rejections
-- Admin approval workflow
-- Secure storage of saved credentials and user profile data
-- Centralized frontend layout using Tailwind CSS
+Main features:
+- User authentication with 2FA
+- Creating, editing, viewing, and canceling reservations
+- Interactive calendar display
+- Notification system for status updates
+- Admin approval process
+- Encrypted storage for user credentials
+- Consistent UI design with Tailwind CSS
 
 ---
 
 ## 2. Core Files and Folders
 
-### Main route entrypoint
-- `routes/web.php`
-  - Defines all web routes for the app
-  - Contains routes for public pages, auth, reservation pages, notifications, and admin portal
+#### Routes
+- `routes/web.php`: Central routing file handling all web routes for authentication, reservations, notifications, and admin access.
 
-### Controllers
-- `app/Http/Controllers/AuthController.php`
-  - Handles login, signup, logout, admin login, Google OAuth, 2FA issuance/verification, profile update
-- `app/Http/Controllers/CalendarController.php`
-  - Exposes API endpoint to fetch reservation events for the calendar
-  - Stores new reservations from the calendar page
-- `app/Http/Controllers/NotificationController.php`
-  - Loads notification list for the user
-  - Marks all notifications as read
-  - Deletes selected notifications and clears associated pending requests
-- `app/Http/Controllers/AdminController.php`
-  - Shows admin dashboard
-  - Approves, rejects, deletes reservations
-  - Updates user roles and deletes users
-- `app/Http/Controllers/FacilityController.php`
-  - Provides facility list API used by the reservation form
-- `app/Http/Controllers/CredentialController.php`
-  - Handles CRUD for saved credentials/password manager
+#### Controllers
+- `AuthController.php`: Manages user login, registration, logout, admin access, OAuth, 2FA, and profile updates.
+- `CalendarController.php`: Provides calendar event data and handles new reservation submissions.
+- `NotificationController.php`: Displays notifications, marks them as read, and handles deletions.
+- `AdminController.php`: Admin dashboard, reservation approvals/rejections, user role management.
+- `FacilityController.php`: Supplies facility data for forms.
+- `CredentialController.php`: Manages saved user credentials.
 
-### Models
-- `app/Models/User.php`
-  - User authentication model
-  - Encrypts email, name, phone, and stores 2FA state
-  - Defines `savedCredentials()` relationship
-- `app/Models/Reservation.php`
-  - Reservation record model
-  - Belongs to `User` and `Facility`
-  - Contains status helper and scopes for upcoming/completed reservations
-- `app/Models/Facility.php`
-  - Facility model with availability check
-  - Defines `reservations()` and `active()` scope
-- `app/Models/SavedCredential.php`
-  - Encrypts saved credential fields like site URL, username, password, and notes
-- `app/Models/AuditLog.php`
-  - Tracks admin actions such as approval/rejection/deletion
+#### Models
+- `User.php`: Handles user data, encryption, and relationships.
+- `Reservation.php`: Manages reservation records and status.
+- `Facility.php`: Facility data with availability checks.
+- `SavedCredential.php`: Encrypted credential storage.
+- `AuditLog.php`: Logs admin actions.
 
-### Views
-- `resources/views/layouts/app.blade.php`
-  - Shared layout wrapper for page header, navigation, and scripts
-- `resources/views/reserve.blade.php`
-  - Reserve page listing user reservations and actions
-- `resources/views/reservations/edit.blade.php`
-  - Reservation edit form
-- `resources/views/calendar.blade.php`
-  - Calendar display page, loaded only by authenticated users
-- `resources/views/notifications/index.blade.php`
-  - Notifications page with mark-read/delete actions
-- `resources/views/auth/*.blade.php`
-  - Login, signup, admin login, 2FA views
-- `resources/views/admin/dashboard.blade.php`
-  - Admin dashboard interface
+#### Views
+- `layouts/app.blade.php`: Main layout template.
+- `reserve.blade.php`: User reservation list.
+- `reservations/edit.blade.php`: Edit reservation form.
+- `calendar.blade.php`: Calendar interface.
+- `notifications/index.blade.php`: Notification management.
+- `auth/*.blade.php`: Authentication pages.
+- `admin/dashboard.blade.php`: Admin panel.
 
-### Non-PHP files
-- `.env.example`
-  - Defines local environment variables used by Laravel
-  - Includes database, session, cache, mail, and queue driver settings
-- `resources/js/bootstrap.js`
-  - Configures Axios for AJAX requests from the frontend
-- `resources/js/app.js`
-  - Main frontend entrypoint loaded by Vite
-- `resources/css/app.css`
-  - Tailwind CSS import and source mapping for asset compilation
-- `vite.config.js`
-  - Defines Vite plugin setup and local dev server configuration
+#### Configuration Files
+- `.env.example`: Environment settings for database, cache, etc.
+- `config/app.php`: Application name, timezone, locale, and service provider settings.
+- `config/auth.php`: Authentication guard and password reset configurations.
+- `config/cache.php`: Cache driver selection and expiration settings.
+- `config/database.php`: Database connection settings and drivers.
+- `config/filesystems.php`: Disk configuration for file storage (local, public, S3).
+- `config/logging.php`: Logging channels and output configuration.
+- `config/queue.php`: Queue driver and job settings.
+- `config/services.php`: Third-party service credentials (Google OAuth, payment gateways, etc.).
+- `config/session.php`: Session driver, lifetime, and cookie settings.
+- `resources/js/bootstrap.js`: AJAX setup.
+- `resources/js/app.js`: Frontend entry point.
+- `resources/css/app.css`: Styles with Tailwind.
+- `vite.config.js`: Build configuration.
 
-### Database schema and migrations
-- `database/migrations/0001_01_01_000000_create_users_table.php`
-  - Creates `users` table with encrypted user data and authentication fields
-- `database/migrations/2024_01_03_000000_create_facilities_table.php`
-  - Creates `facilities`
-- `database/migrations/2024_01_04_000000_create_reservations_table.php`
-  - Creates `reservations`
-- `database/migrations/2026_04_18_000000_create_notifications_table.php`
-  - Creates Laravel notifications table
-- `database/migrations/2026_04_17_000000_add_is_admin_to_users_and_create_audit_logs_table.php`
-  - Adds admin flags and audit log table
-- `database/migrations/2026_04_12_000000_add_profile_phone_and_2fa_settings_to_users_table.php`
-  - Adds profile phone and 2FA settings
-- `database/migrations/2026_03_15_000001_add_is_active_to_facilities_table.php`
-  - Adds facility active flag
+#### Database
+- `database/migrations/`: SQL migration files for creating and modifying tables.
+- `database/seeders/`: Data seeders for populating initial test data.
+  - `UserSeeder.php`: Creates default admin and test users.
+  - `FacilitySeeder.php`: Populates facility database records.
+  - `DummyReservationSeeder.php`: Creates sample reservations for testing.
+- `database/factories/`: Factory classes for generating test data with Faker.
+- `database.sqlite`: Local SQLite database file (development only).
+
+#### Middleware
+- `app/Http/Middleware/SecurityHeaders.php`: Adds security headers (CSP, X-Frame-Options, etc.) to protect against common web attacks.
+
+#### Notifications
+- `app/Notifications/ReservationPendingApproval.php`: Notifies admins when a new reservation requires approval.
+- `app/Notifications/ReservationStatusChanged.php`: Notifies users when reservation status changes (approved/rejected).
+
+#### Bootstrap
+- `bootstrap/app.php`: Application initialization and service provider registration.
+- `bootstrap/providers.php`: Bootstrap providers configuration.
+- `bootstrap/cache/`: Cached configuration and service files.
+
+#### Public
+- `public/index.php`: Application entry point (front controller).
+- `public/build/`: Compiled CSS/JS assets from Vite.
+- `public/storage/`: Symbolic link to user uploads (profile pictures, credentials).
+- `public/fullcalendar/`: FullCalendar library and assets.
+- `public/js/`: Frontend JavaScript files.
+- `public/robots.txt`: SEO directives for search engines.
+- `public/.htaccess`: Apache rewrite rules for pretty URLs.
 
 ---
 
-## 3. What happens when a user logs in
+## 3. User Login Process
 
-1. User visits `/login`
-2. `routes/web.php` sends request to `AuthController@showLogin`
-3. On POST `/login`, `AuthController@login` validates credentials
-4. If valid and 2FA is enabled, user is sent an OTP code and session state is set
-5. User completes `/2fa` verification or is logged in directly if 2FA is disabled
-6. After login, user is redirected to `/reserve`
+1. User accesses the login page.
+2. Routes direct to AuthController for form display.
+3. Submission validates credentials via AuthController@login.
+4. If 2FA is active, an OTP is sent and session prepared.
+5. User enters 2FA code or proceeds if disabled.
+6. Successful login redirects to the reservation page.
 
-Important auth logic location:
-- `app/Http/Controllers/AuthController.php`
-  - `login()`
-  - `issueOtp()`
-  - `showAdminLogin()`
-  - `loginAdmin()`
-  - `show2faVerify()` and `verify2fa()`
+Key authentication methods in AuthController.php:
+- login(), issueOtp(), showAdminLogin(), loginAdmin(), show2faVerify(), verify2fa().
 
-### Notes for defense
-- The system stores email, name, phone encrypted in the database using Laravel `Crypt`
-- It stores `email_hash` for login lookups without revealing raw emails
-- `2fa_code` is hashed, and expiry is stored in `2fa_expires_at`
+Security highlights:
+- Personal data (email, name, phone) is encrypted in the database.
+- Uses hashed email for lookups to protect privacy.
+- 2FA codes are securely hashed with expiration timestamps.
 
 ---
 
-## 4. Reservation flow
+## 4. Reservation Workflow
 
-### Create/submit a reservation
-- Calendar page `/calendar` loads events via `/api/calendar/events`
-- `CalendarController@events` returns reservations formatted for FullCalendar
-- New reservation POST goes to `/api/calendar/reserve`
-- `CalendarController@store` validates the request
-- It checks facility availability via `Facility::isAvailable()`
-- It stores the reservation in `reservations` with `status = 'pending'`
-- It notifies admins using `ReservationPendingApproval`
+### Creating a Reservation
+1. User loads the calendar page.
+2. Frontend fetches existing events via CalendarController@events.
+3. User submits a new booking.
+4. CalendarController@store validates and checks availability using Facility::isAvailable().
+5. Reservation is saved as 'pending' and admins are notified.
 
-### Edit or delete reservation
-- `/reserve/reservations/{reservation}/edit` shows the edit form
-- Update uses `PUT /reserve/reservations/{reservation}` inside route closures in `routes/web.php`
-- Delete uses `DELETE /reserve/reservations/{reservation}`
-- Bulk delete uses `/reserve/reservations/delete-selected`
+### Editing or Deleting Reservations
+- Edit: Access edit form, update via routes in web.php.
+- Delete: Single or bulk deletion handled by route closures.
 
-### Relevant files
-- `routes/web.php`
-  - Reserve routes and inline update/delete logic
-- `app/Http/Controllers/CalendarController.php`
-  - Event fetching and reservation storage
-- `app/Models/Facility.php`
-  - `isAvailable()` helper that prevents overlapping bookings
-- `app/Models/Reservation.php`
-  - Casts reservation date/times and holds status logic
+Core files:
+- routes/web.php: Reservation routes.
+- CalendarController.php: Event data and storage.
+- Facility.php: Availability checks.
+- Reservation.php: Status and date handling.
 
 ---
 
-## 5. Calendar and event rendering
+## 5. Calendar Integration
 
-Calendar page uses FullCalendar and fetches events from:
-- `GET /api/calendar/events`
-- Handled by `CalendarController@events`
+The calendar uses FullCalendar library. Events are fetched from CalendarController@events API endpoint.
 
-The controller returns JSON with:
-- `title` = facility name
-- `start` and `end` = ISO 8601 datetime strings
-- `color` = generated by `getReservationColor()`
-- `extendedProps` = purpose, status, room, date
+Response includes:
+- Title: Facility name
+- Start/End: ISO datetime strings
+- Color: Based on reservation status
+- Extended properties: Purpose, status, room details
 
-This is the bridge between backend reservations and frontend calendar rendering.
+This connects backend data to the interactive frontend calendar.
 
 ---
 
-## 6. Notifications and approval workflow
+## 6. Notifications and Admin Approval
 
-### Notification pages
-- `GET /notifications` → `NotificationController@index`
-- `POST /notifications/mark-read` → `NotificationController@markAllRead`
-- `POST /notifications/delete-selected` → `NotificationController@destroySelected`
+### Notification Management
+- View: NotificationController@index loads user notifications.
+- Mark Read: NotificationController@markAllRead.
+- Delete: NotificationController@destroySelected removes notifications and linked pending requests.
 
-### What happens when admin approves/rejects
-- Admin routes under `/admin/*`
-- `AdminController@approve()` marks a reservation approved
-- `AdminController@reject()` marks a reservation rejected
-- Both methods create an `AuditLog` record
-- Both methods fire `ReservationStatusChanged` to notify the user
+### Admin Approval Process
+- Admins access /admin routes.
+- AdminController methods approve/reject reservations, log actions in AuditLog, and send status notifications via ReservationStatusChanged.
 
-### Notification tables
-- `database/migrations/2026_04_18_000000_create_notifications_table.php`
-  - `notifications` table is the Laravel database notification table
-  - Stores notification `type`, `data`, `read_at`, and `notifiable` polymorphic relation
-
-### Notification payloads
-- `app/Notifications/ReservationPendingApproval.php`
-  - Created when a reservation is submitted or resubmitted
-  - Data contains `title`, `message`, `action_url`, and `status`
-- `app/Notifications/ReservationStatusChanged.php`
-  - Sent to the requester when admin approves/rejects
+### Notification System
+- Uses Laravel's database notifications table.
+- Key notifications: ReservationPendingApproval (for submissions) and ReservationStatusChanged (for decisions).
 
 ---
 
-## 7. Admin section
+## 7. Admin Features
 
-### Admin login flow
-- Hidden admin login page: `/admin-secret`
-- Admin credentials are validated in `AuthController@loginAdmin()`
-- If admin has 2FA enabled, they are redirected to `/admin-2fa`
+### Admin Access
+- Login via hidden /admin-secret page.
+- AuthController@loginAdmin() handles validation.
+- Supports 2FA if enabled.
 
-### Admin actions
-- `GET /admin/dashboard` → `AdminController@dashboard`
-- `POST /admin/reservations/{reservation}/approve` → approve
-- `POST /admin/reservations/{reservation}/reject` → reject
-- `DELETE /admin/reservations/{reservation}` → delete
-- `POST /admin/users/{user}/role` → role change
-- `DELETE /admin/users/{user}` → delete user
+### Admin Functions
+- Dashboard: AdminController@dashboard.
+- Reservation management: Approve, reject, delete.
+- User management: Role updates and deletions.
 
-### Admin safety
-- `requireAdmin()` and `requireSuperAdmin()` in `AdminController.php` protect sensitive actions
-- `isSuperAdmin` prevents a head admin from being demoted or deleted incorrectly
+### Security Measures
+- requireAdmin() and requireSuperAdmin() protect actions.
+- Super admin role prevents unauthorized demotion.
 
 ---
 
-## 8. Database location and configuration
+## 8. Database Setup
 
-### Where configuration lives
-- `.env` file in the project root stores connection details such as:
-  - `DB_CONNECTION`
-  - `DB_HOST`
-  - `DB_PORT`
-  - `DB_DATABASE`
-  - `DB_USERNAME`
-  - `DB_PASSWORD`
-- Schema configuration is in `config/database.php`
+### Configuration
+- .env file: Database connection (host, port, credentials).
+- config/database.php: Schema settings.
 
-### Primary tables
-- `users`
-- `facilities`
-- `reservations`
-- `saved_credentials`
-- `notifications`
-- `audit_logs`
+### Key Tables
+- users, facilities, reservations, saved_credentials, notifications, audit_logs.
 
-### Important migrations
-- User plus 2FA fields: `2026_04_12_000000_add_profile_phone_and_2fa_settings_to_users_table.php`
-- Admin flags and audit logs: `2026_04_17_000000_add_is_admin_to_users_and_create_audit_logs_table.php`
-- Notifications table: `2026_04_18_000000_create_notifications_table.php`
+### Migrations
+- User table with 2FA: add_profile_phone_and_2fa_settings_to_users_table.php
+- Admin and audit logs: add_is_admin_to_users_and_create_audit_logs_table.php
+- Notifications: create_notifications_table.php
 
-### Database access notes
-- The project uses Eloquent models for ORM
-- Relationships use `belongsTo` and `hasMany`
-- Sensitive fields are encrypted at the model layer using Laravel `Crypt`
+### Data Handling
+- Eloquent ORM for database interactions.
+- Relationships: belongsTo/hasMany.
+- Encryption for sensitive data using Laravel Crypt.
 
 ---
 
-## 9. Most important files for your defense
+## 9. Key Files for Defense
 
-### Authentication and security
-- `app/Http/Controllers/AuthController.php`
-- `app/Models/User.php`
-- `database/migrations/0001_01_01_000000_create_users_table.php`
-- `database/migrations/2024_11_01_000000_add_2fa_columns_to_users_table.php`
-- `database/migrations/2026_04_12_000000_add_profile_phone_and_2fa_settings_to_users_table.php`
+### Authentication & Security
+- AuthController.php, User.php, user table migrations.
 
-### Reservation logic
-- `routes/web.php` (reserve, edit, delete, bulk delete)
-- `app/Http/Controllers/CalendarController.php`
-- `app/Models/Reservation.php`
-- `app/Models/Facility.php`
-- `resources/views/reserve.blade.php`
-- `resources/views/reservations/edit.blade.php`
+### Reservation Logic
+- routes/web.php, CalendarController.php, Reservation.php, Facility.php, reserve views.
 
-### Admin review
-- `app/Http/Controllers/AdminController.php`
-- `app/Notifications/ReservationStatusChanged.php`
-- `app/Notifications/ReservationPendingApproval.php`
-- `resources/views/admin/dashboard.blade.php`
+### Admin Review
+- AdminController.php, ReservationStatusChanged.php, ReservationPendingApproval.php, admin dashboard.
 
 ### Notifications
-- `app/Http/Controllers/NotificationController.php`
-- `resources/views/notifications/index.blade.php`
+- NotificationController.php, notifications view.
 
-### Debug utilities
-- `app/Http/Controllers/DebugController.php`
-  - Provides a simple web form to decrypt Laravel encrypted strings using the app's current `APP_KEY`
-- `resources/views/debug/decrypt.blade.php`
-  - Web interface for pasting and decrypting `Crypt::encryptString()` values
-
-### Data security
-- `app/Models/SavedCredential.php`
-- `app/Models/User.php`
-- `database/migrations/2024_01_02_000000_create_saved_credentials_table.php`
+### Data Security
+- SavedCredential.php, User.php, saved_credentials migration.
 
 ---
 
-## 10. Dependencies and Build Configuration
+## 10. Dependencies & Build
 
-### `composer.json` (PHP dependencies)
-- **Requires**: Laravel 12.0, Socialite 5.26 (OAuth), Tinker (artisan shell)
-- **Dev requires**: PHPUnit 11.5.3, Faker, Laravel Pint (linter), Laravel Pail (log viewer), Mockery
-- **Key scripts**:
-  - `setup`: Installs composer, creates `.env`, generates key, runs migrations, builds frontend
-  - `dev`: Runs Laravel server, queue listener, pail logs, and Vite dev server concurrently
-  - `test`: Runs PHPUnit test suite after clearing config cache
-  - `post-autoload-dump`: Publishes Laravel assets and discovers packages
+### PHP (composer.json)
+- Core: Laravel 12.0, Socialite for OAuth.
+- Dev: PHPUnit for testing, Pint for linting.
+- Scripts: setup (full install), dev (servers), test (run tests).
 
-### `package.json` (Frontend dependencies)
-- **Dev dependencies**: Vite 7, Tailwind CSS with Vite plugin, Laravel Vite plugin, Axios
-- **Dependencies**: FullCalendar 6.1.20 with plugins for day/time grid views
-- **Key scripts**:
-  - `dev`: Starts Vite development server for hot module replacement
-  - `build`: Compiles CSS and JS for production
-- **Purpose**: Manages frontend build pipeline and calendar/styling libraries
+### Frontend (package.json)
+- Dev: Vite, Tailwind CSS.
+- Prod: FullCalendar for calendar UI.
+- Scripts: dev (hot reload), build (production).
 
-### Build flow
-1. `npm run dev` starts Vite at `http://127.0.0.1:5173`
-2. `resources/js/app.js` and `resources/css/app.css` are entry points compiled by Vite
-3. Output is written to `public/build/` for production
-4. Laravel Blade templates reference compiled assets via `@vite(['...'])`
+Build process: Vite compiles JS/CSS, Laravel serves via @vite.
 
 ---
 
@@ -334,37 +249,99 @@ If you are using a local environment with XAMPP, ensure the `.env` database sett
 
 ---
 
-## 11. Straightforward guide to explain the system
+## 11. System Overview
 
-### How a reservation is created
-1. Authenticated user loads `/calendar`
-2. Frontend requests `/api/calendar/events` to show existing bookings
-3. User submits a new booking form
-4. Backend validates input and checks facility availability in `Facility::isAvailable()`
-5. Reservation is saved in `reservations` with `status = 'pending'`
-6. Notification is sent to admins via `ReservationPendingApproval`
+### Reservation Creation
+1. User logs in and accesses the calendar.
+2. Existing bookings are loaded via API.
+3. User submits a booking request.
+4. System validates and checks facility availability.
+5. Saves as pending and notifies admins.
 
-### How admin approves/rejects
-1. Admin logs in via `/admin-secret`
-2. Admin reviews pending bookings on `/admin/dashboard`
-3. Approve or reject action updates the reservation status
-4. `AuditLog` stores the admin action
-5. User receives a notification from `ReservationStatusChanged`
+### Admin Approval
+1. Admin logs in to dashboard.
+2. Reviews pending reservations.
+3. Approves or rejects, logging the action.
+4. User gets notified of the decision.
 
-### How notifications work
-- Stored in the `notifications` table
-- Loaded by `NotificationController@index`
-- The user can mark all as read or delete selected notifications
-- Deleting an approval notification may also remove the pending reservation request
+### Notifications
+- Stored in database, managed via controller.
+- Users can mark as read or delete.
+- Linked to reservation status changes.
 
 ---
 
-## 12. Recommended defense talking points
-- The project separates routes, controllers, models, and views clearly
-- Authentication is layered with 2FA and device remembering
-- Reservation conflicts are prevented by model-level availability checks
-- Notifications use Laravel's built-in database notification system
-- Admin actions are logged in `audit_logs`
-- Sensitive text data is encrypted in the model layer before database storage
+## 12. Defense Talking Points
+- Clean MVC architecture with separated concerns.
+- Robust security: 2FA, encrypted data, hashed lookups.
+- Conflict-free reservations via availability checks.
+- Integrated notification system using Laravel's framework.
+- Audited admin actions for accountability.
+- Encrypted sensitive data at the model level.
+
+---
+
+## 13. Q&A Defense Preparation
+
+Professors typically test code block knowledge and logical flow. Prepare for these areas:
+
+### Security & Authentication (High Priority)
+- **OTP Flow**: Explain end-to-end (generation → hashing → database storage → verification → deletion).
+- **Why hash OTP?** Prevents exposure if database is compromised. Even if someone accesses DB, hashed OTP is useless.
+- **Email encryption + hashing**: Why both? Email is encrypted for storage privacy. Hash enables lookups without decrypting entire database.
+- **Mid-2FA scenarios**: What happens if user closes browser after OTP sent? Session persists pending_2fa_user_id but expires if code expires.
+- **Brute force protection**: Maximum 3 attempts in 30 seconds. User must resend if exhausted.
+
+### Database & Data Integrity
+- **Separate OTP table**: Why not store in users table? Separation of concerns. OTPs are temporary, transient data. Keeps users table clean.
+- **Foreign key cascade**: DELETE on CASCADE ensures OTPs are removed when user is deleted. No orphaned records.
+- **Index on expires_at**: Speeds up cleanup queries that find records where expires_at < NOW().
+- **Race conditions**: Cleanup command runs every minute. What if two processes delete same OTP? Database handles with atomic operations.
+
+### Edge Cases They Will Ask
+- **Multiple OTP requests**: Each new issueOtp() deletes old OTPs for that user first (via Otp::where('user_id', $user->id)->delete()).
+- **Refresh page 5 times during 2FA**: Session state persists pending_2fa_user_id. Each refresh checks if OTP expired. If yes, redirect to login.
+- **Scheduler failure**: Cleanup never runs. Database bloats with expired records. Solution: Add cleanup to logout process or add cron alerts.
+- **Device remember cookie expires**: User must re-authenticate with 2FA. Cookie is separate from OTP mechanism.
+
+### Code Quality & Design Decisions
+- **Why delete() after verify vs NULL fields**: Cleaner approach. Deleted record means OTP consumed. No need to store null references.
+- **Error handling**: verify2fa() checks if Otp exists and is valid before Hash::check(). Prevents exceptions.
+- **Logging OTP to file**: Development convenience. In production, would send via email/SMS provider (e.g., Twilio, SendGrid).
+- **Why removed 2FA columns from users table**: Moved to Otp model for better design. Users table was getting bloated with temporary data.
+
+### Tracing the Flow (Whiteboard Practice)
+Walk through this scenario: "A user enters wrong OTP 3 times"
+1. First attempt: incrementAttempts() → attempts = 1. Error message.
+2. Second attempt: incrementAttempts() → attempts = 2. Error message.
+3. Third attempt: incrementAttempts() → attempts = 3. Check fails: !$otp->isValid() because attempts >= 3.
+4. Response: "Code expired or too many attempts. Please resend a new code."
+5. Resend endpoint: Deletes old OTP, creates new one, resets attempts to 0.
+
+### Improvements & Follow-up Questions
+Be ready to discuss what you'd improve:
+- **TOTP support**: Time-based one-time passwords (authenticator apps like Google Authenticator).
+- **Recovery codes**: If user loses phone, backup codes for account access.
+- **Rate limiting per IP**: Prevent brute force from same IP address.
+- **Email/SMS integration**: Currently logs to file. How would you implement actual delivery?
+- **Audit logging**: Currently logs OTP generation. Could log verification attempts too.
+
+### Quick Reference Answers
+| Question | Answer |
+|----------|--------|
+| Where is OTP stored? | Database `otps` table. Hashed with bcrypt. |
+| How long does OTP last? | 30 seconds from generation. |
+| Where is it sent to user? | Currently logged to `storage/logs/otp.log` for development. |
+| How many attempts allowed? | Maximum 3 within the 30-second window. |
+| What happens after expiry? | Automatic deletion via `php artisan otps:cleanup` command (runs every minute). |
+| Why separate table? | Keeps data model clean. OTPs are temporary. Enables efficient cleanup. |
+| What if user never uses OTP? | Cleaned up automatically after expiration. |
+
+### Practice Session Tips
+1. **Know your migrations by date**: They show your development timeline and thought process.
+2. **Trace login flow on whiteboard**: Draw boxes for Auth, OTP Model, Database. Show data flow.
+3. **Explain encryption strategy**: Why email is encrypted but email_hash is not.
+4. **Be confident about limitations**: Don't pretend OTP is sent via email if it isn't. Mention it's logged for testing.
+5. **Have backup answers**: "That's a great point. In production, we'd use X service for Y reason."
 
 Good luck with your capstone defense!

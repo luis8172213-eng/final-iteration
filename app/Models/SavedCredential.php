@@ -11,7 +11,7 @@ class SavedCredential extends Model
     use HasFactory;
 
     /**
-     * The attributes that are mass assignable.
+     * Fields I can assign when creating/updating a saved credential.
      *
      * @var array<int, string>
      */
@@ -25,7 +25,7 @@ class SavedCredential extends Model
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Don't expose the password when converting to JSON.
      *
      * @var array<int, string>
      */
@@ -34,7 +34,7 @@ class SavedCredential extends Model
     ];
 
     /**
-     * Get the user that owns the credential.
+     * Link to the user who saved this credential.
      */
     public function user()
     {
@@ -42,7 +42,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * AES Encrypt the site name when storing
+     * When saving the site name, I encrypt it for security.
      */
     public function setSiteNameAttribute($value)
     {
@@ -50,7 +50,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * Decrypt the site name when retrieving
+     * When getting the site name, I decrypt it so it's readable.
      */
     public function getSiteNameAttribute($value)
     {
@@ -62,7 +62,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * AES Encrypt the site URL when storing
+     * When saving the site URL, I encrypt it (but allow it to be empty).
      */
     public function setSiteUrlAttribute($value)
     {
@@ -70,7 +70,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * Decrypt the site URL when retrieving
+     * When getting the site URL, I decrypt it if it exists.
      */
     public function getSiteUrlAttribute($value)
     {
@@ -83,7 +83,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * AES Encrypt the username when storing
+     * When saving the username, I encrypt it so it's secure.
      */
     public function setUsernameAttribute($value)
     {
@@ -91,7 +91,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * Decrypt the username when retrieving
+     * When getting the username, I decrypt it.
      */
     public function getUsernameAttribute($value)
     {
@@ -103,16 +103,16 @@ class SavedCredential extends Model
     }
 
     /**
-     * AES Encrypt the password when storing
+     * When saving the password, I encrypt it so it stays secure in the database.
      */
     public function setPasswordAttribute($value)
     {
-        // Encrypt saved passwords in the database to protect them when stored.
+        // Make sure the password is encrypted before saving
         $this->attributes['password'] = Crypt::encryptString($value);
     }
 
     /**
-     * Decrypt the password when retrieving
+     * When getting the password, I decrypt it.
      */
     public function getPasswordAttribute($value)
     {
@@ -124,7 +124,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * AES Encrypt the notes when storing
+     * When saving notes, I encrypt them (but allow them to be empty).
      */
     public function setNotesAttribute($value)
     {
@@ -132,7 +132,7 @@ class SavedCredential extends Model
     }
 
     /**
-     * Decrypt the notes when retrieving
+     * When getting notes, I decrypt them if they exist.
      */
     public function getNotesAttribute($value)
     {
