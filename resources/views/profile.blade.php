@@ -172,7 +172,7 @@
                         </div>
 
                         <div class="flex flex-col gap-3 sm:flex-row justify-end">
-                            <a href="/dashboard" class="inline-flex items-center justify-center rounded-full border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all">Cancel</a>
+                            <a href="{{ route('reserve') }}" class="inline-flex items-center justify-center rounded-full border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all">Cancel</a>
                             <button type="submit" class="inline-flex items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-gray-900 transition-all">Save settings</button>
                         </div>
                     </form>

@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     })->name('calendar');
 
     Route::get('/api/calendar/events', [CalendarController::class, 'events']);
+    Route::get('/api/calendar/pending', [CalendarController::class, 'pending']);
 });
 
 Route::middleware('auth')->post('/api/calendar/reserve', [CalendarController::class, 'store']);
@@ -115,7 +116,9 @@ Route::middleware('auth')->group(function () {
                 || $reservation->reservation_date < now()->toDateString();
         })->count();
 
-        return view('reserve', compact('reservations', 'upcomingCount', 'completedCount'));
+        $facilities = Facility::active()->orderBy('name')->get();
+
+        return view('reserve', compact('reservations', 'upcomingCount', 'completedCount', 'facilities'));
     })->name('reserve');
 
     Route::get('/reserve/reservations/{reservation}/edit', function (Reservation $reservation) {
@@ -190,11 +193,6 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('reserve')->with('success', $deletedCount > 0 ? "{$deletedCount} reservation(s) deleted successfully." : 'No reservations were selected.');
     })->name('reservations.destroySelected');
 
-    // Dashboard page alias
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-
     // Saved Credentials (Password Manager)
     Route::resource('credentials', CredentialController::class);
     Route::get('/credentials/{credential}/password', [CredentialController::class, 'getPassword'])
@@ -230,3 +228,4 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('admin.users.destroy');
     });
 });
+

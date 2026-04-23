@@ -5,7 +5,7 @@
 @section('content')
 <!-- Calendar page showing reservation events and interaction controls for event details. -->
 <div class="min-h-screen bg-slate-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex flex-col gap-4 md:gap-6 mb-6">
             <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                 <div>
@@ -21,35 +21,50 @@
                     <button id="todayBtn" type="button" class="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition">Today</button>
                 </div>
             </div>
-            <div class="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-                <aside class="space-y-6 rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
-                    <div class="rounded-3xl border border-slate-200 bg-slate-900 p-5 text-white shadow-sm">
-                        <div class="flex items-center justify-between text-sm text-slate-300 mb-4">
-                            <span id="miniCalendarHeader">August 2023</span>
-                            <span id="miniCalendarView">Week</span>
+            <div class="gap-4 grid-cols-1" style="display:grid;grid-template-columns:240px minmax(680px,1fr);gap:1rem;overflow-x:auto;max-width:1040px;margin:0 auto;">
+                <div class="space-y-6">
+                    <aside class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+                        <div class="rounded-3xl border border-slate-200 bg-slate-900 p-5 text-white shadow-sm">
+                            <div class="flex items-center justify-between text-sm text-slate-300 mb-4">
+                                <span id="miniCalendarHeader">August 2023</span>
+                                <span id="miniCalendarView">Week</span>
+                            </div>
+                            <div class="grid grid-cols-7 gap-2 text-center text-[11px] uppercase text-slate-400 mb-3">
+                                <span>Su</span>
+                                <span>Mo</span>
+                                <span>Tu</span>
+                                <span>We</span>
+                                <span>Th</span>
+                                <span>Fr</span>
+                                <span>Sa</span>
+                            </div>
+                            <div id="miniCalendarDays" class="grid grid-cols-7 gap-2 text-sm text-slate-100">
+                                <!-- Filled by JavaScript -->
+                            </div>
                         </div>
-                        <div class="grid grid-cols-7 gap-2 text-center text-[11px] uppercase text-slate-400 mb-3">
-                            <span>Su</span>
-                            <span>Mo</span>
-                            <span>Tu</span>
-                            <span>We</span>
-                            <span>Th</span>
-                            <span>Fr</span>
-                            <span>Sa</span>
+                    </aside>
+                    <aside class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <p class="text-sm font-medium text-slate-500">Pending</p>
+                                <h2 class="text-xl font-semibold text-slate-900">Pending reservations</h2>
+                            </div>
+                            <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">Waiting approval</span>
                         </div>
-                        <div id="miniCalendarDays" class="grid grid-cols-7 gap-2 text-sm text-slate-100">
-                            <!-- Filled by JavaScript -->
+                        <div id="pendingReservationsList" class="space-y-4">
+                            <div class="rounded-3xl bg-slate-50 p-4 text-sm text-slate-500">
+                                Pending reservation requests will appear here.
+                            </div>
                         </div>
-                    </div>
-
-                </aside>
-                <main class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+                    </aside>
+                </div>
+                <main class="min-w-0 rounded-3xl bg-white p-6 shadow-sm border border-slate-200" style="min-width:680px;width:100%;max-width:100%;">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div class="space-y-2">
                             <p class="text-sm font-semibold text-slate-900">Weekly view</p>
                             <p class="text-sm text-slate-500">Browse existing reservations and see availability at a glance.</p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex flex-nowrap items-center gap-3 overflow-x-auto">
                             <button data-view="dayGridMonth" class="px-4 py-2 rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200">Month</button>
                             <button data-view="timeGridWeek" class="px-4 py-2 rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200">Week</button>
                             <button data-view="listWeek" class="px-4 py-2 rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200">List</button>
@@ -57,7 +72,7 @@
                         </div>
                     </div>
 
-                    <div id="calendar" class="rounded-3xl border border-slate-200"></div>
+                    <div id="calendar" class="rounded-3xl border border-slate-200 w-full" style="min-height:760px;"></div>
                 </main>
             </div>
         </div>
@@ -96,7 +111,7 @@
             </div>
         </div>
         <div class="mt-8 flex flex-wrap items-center gap-3">
-            <a id="eventInfoEditBtn" href="#" class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition">Edit reservation</a>
+            <a id="eventInfoEditBtn" href="#" class="hidden items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition">Edit reservation</a>
             <form id="eventInfoDeleteForm" method="POST" action="#" class="hidden" onsubmit="return confirm('Remove this reservation? This cannot be undone.');">
                 @csrf
                 @method('DELETE')
@@ -119,6 +134,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
         var searchInput = document.getElementById('eventSearch');
+        var pendingReservationsList = document.getElementById('pendingReservationsList');
         var todayBtn = document.getElementById('todayBtn');
         var viewButtons = document.querySelectorAll('[data-view]');
         var eventInfoModal = document.getElementById('eventInfoModal');
@@ -211,7 +227,12 @@
                 eventInfoPurpose.textContent = props.purpose || '—';
                 if (eventInfoEditBtn) {
                     eventInfoEditBtn.href = '/reserve/reservations/' + sourceEvent.id + '/edit';
-                    eventInfoEditBtn.classList.remove('hidden');
+                    // Since we now only fetch current user's reservations, show edit for pending/approved/rejected
+                    if (['approved', 'rejected', 'pending'].includes(props.status)) {
+                        eventInfoEditBtn.classList.remove('hidden');
+                    } else {
+                        eventInfoEditBtn.classList.add('hidden');
+                    }
                 }
                 if (eventInfoDeleteForm) {
                     eventInfoDeleteForm.action = '/reserve/reservations/' + sourceEvent.id;
@@ -273,7 +294,12 @@
                 eventInfoPurpose.textContent = props.purpose || '—';
                 if (eventInfoEditBtn) {
                     eventInfoEditBtn.href = '/reserve/reservations/' + event.id + '/edit';
-                    eventInfoEditBtn.classList.remove('hidden');
+                    // Since we now only fetch current user's reservations, show edit for pending/approved/rejected
+                    if (['approved', 'rejected', 'pending'].includes(props.status)) {
+                        eventInfoEditBtn.classList.remove('hidden');
+                    } else {
+                        eventInfoEditBtn.classList.add('hidden');
+                    }
                 }
                 if (eventInfoDeleteForm) {
                     eventInfoDeleteForm.action = '/reserve/reservations/' + event.id;
@@ -289,6 +315,37 @@
         });
 
         calendar.render();
+        fetchPendingReservations();
+
+        function fetchPendingReservations() {
+            if (!pendingReservationsList) return;
+            fetch('/api/calendar/pending', { credentials: 'include' })
+                .then(function(response) { return response.json(); })
+                .then(function(pending) {
+                    if (!pending.length) {
+                        pendingReservationsList.innerHTML = '<div class="rounded-3xl bg-slate-50 p-4 text-sm text-slate-500">No pending reservations at the moment.</div>';
+                        return;
+                    }
+
+                    pendingReservationsList.innerHTML = pending.map(function(item) {
+                        return '<div class="rounded-3xl bg-slate-50 p-4">'
+                            + '<div class="flex items-center justify-between">'
+                            + '<div>'
+                            + '<p class="text-sm font-semibold text-slate-900">' + item.facility + '</p>'
+                            + '<p class="text-sm text-slate-500">' + item.date + ' • ' + item.start_time + ' - ' + item.end_time + '</p>'
+                            + '</div>'
+                            + '<span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">Pending</span>'
+                            + '</div>'
+                            + '<p class="mt-3 text-sm text-slate-600">' + (item.purpose || 'No purpose provided.') + '</p>'
+                            + '</div>';
+                    }).join('');
+                })
+                .catch(function() {
+                    if (pendingReservationsList) {
+                        pendingReservationsList.innerHTML = '<div class="rounded-3xl bg-slate-50 p-4 text-sm text-slate-500">Unable to load pending reservations.</div>';
+                    }
+                });
+        }
 
         // Mini calendar update function
         function updateMiniCalendar() {
@@ -414,3 +471,4 @@
     });
 </script>
 @endpush
+

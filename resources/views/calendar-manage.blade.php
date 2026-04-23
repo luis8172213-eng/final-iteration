@@ -83,7 +83,7 @@
     </div>
 </div>
 
-<div id="reservationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4 opacity-0 pointer-events-none transition-opacity duration-200" aria-hidden="true">
+<div id="reservationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-sm p-4 opacity-0 pointer-events-none transition-opacity duration-200" aria-hidden="true">
     <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl transform transition-transform duration-200">
         <h2 class="text-2xl font-semibold text-slate-900 mb-3">Reserve a facility on <span id="modalDate"></span></h2>
         <form id="reservationForm" action="/api/calendar/reserve" method="POST" class="space-y-5">
@@ -100,22 +100,25 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="startTime" class="block text-sm font-medium text-slate-700">Start time</label>
-                    <input type="time" id="startTime" name="startTime" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700" required />
+                    <input type="time" id="startTime" name="startTime" value="06:00" class="mt-2 w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm leading-6 text-slate-700" required />
                 </div>
                 <div>
                     <label for="endTime" class="block text-sm font-medium text-slate-700">End time</label>
-                    <input type="time" id="endTime" name="endTime" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700" required />
+                    <input type="time" id="endTime" name="endTime" value="07:00" class="mt-2 w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm leading-6 text-slate-700" required />
                 </div>
             </div>
-            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button type="button" id="closeModalBtn" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition">Cancel</button>
-                <button type="submit" class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Reserve</button>
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                <div id="reservationValidationMessage" class="min-h-5 text-sm font-semibold text-rose-600"></div>
+                <div class="flex gap-3">
+                    <button type="button" id="closeModalBtn" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition">Cancel</button>
+                    <button type="submit" class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Reserve</button>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<div id="errorModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40 p-4 min-h-screen">
+<div id="errorModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/10 backdrop-blur-sm p-4 min-h-screen">
     <div class="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
         <div class="text-center">
             <p class="text-sm font-semibold text-red-600">Error</p>
@@ -128,7 +131,7 @@
     </div>
 </div>
 
-<div id="successModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40 p-4 min-h-screen">
+<div id="successModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/10 backdrop-blur-sm p-4 min-h-screen">
     <div class="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
         <div class="text-center">
             <p class="text-sm font-semibold text-emerald-600">Success</p>
@@ -311,6 +314,22 @@
 
         var reservationDateInput = document.getElementById('reservationDate');
         var reservationForm = document.getElementById('reservationForm');
+        var reservationValidationMessage = document.getElementById('reservationValidationMessage');
+
+        function setDefaultReservationTimes() {
+            var startInput = document.getElementById('startTime');
+            var endInput = document.getElementById('endTime');
+            if (startInput) startInput.value = '06:00';
+            if (endInput) endInput.value = '07:00';
+        }
+
+        function resetReservationValidation() {
+            if (reservationValidationMessage) reservationValidationMessage.textContent = '';
+        }
+
+        function setReservationValidationError(message) {
+            if (reservationValidationMessage) reservationValidationMessage.textContent = message;
+        }
 
         openModalBtn.addEventListener('click', function() {
             selectedDate = calendar.getDate().toISOString().split('T')[0];
@@ -319,10 +338,13 @@
                 reservationDateInput.value = selectedDate;
             }
             populateFacilities();
+            resetReservationValidation();
+            setDefaultReservationTimes();
             toggleModal(true);
         });
 
         document.getElementById('closeModalBtn').addEventListener('click', function() {
+            resetReservationValidation();
             toggleModal(false);
         });
 
@@ -335,6 +357,12 @@
             var purpose = document.getElementById('purpose').value;
             var startTime = document.getElementById('startTime').value;
             var endTime = document.getElementById('endTime').value;
+
+            resetReservationValidation();
+            if (startTime && endTime && endTime <= startTime) {
+                setReservationValidationError("End time can't be earlier than start");
+                return;
+            }
 
             fetch('/api/calendar/reserve', {
                 method: 'POST',
@@ -380,6 +408,8 @@
                 calendar.refetchEvents();
                 toggleModal(false);
                 document.getElementById('reservationForm').reset();
+                resetReservationValidation();
+                setDefaultReservationTimes();
                 toggleSuccessModal(true);
             })
             .catch(function(err) {

@@ -70,11 +70,11 @@ class Facility extends Model
      */
     public function isAvailable($date, $startTime, $endTime, $excludeReservationId = null): bool
     {
-        // I look for any pending or approved reservations that overlap with the requested time
-        // If times overlap in any way, the room is taken
+        // I only block approvals and calendar bookings against already approved reservations.
+        // Pending reservations may overlap, but they are not shown on the calendar until approved.
         $query = $this->reservations()
             ->where('reservation_date', $date)
-            ->whereIn('status', ['pending', 'approved'])
+            ->where('status', 'approved')
             ->where(function ($q) use ($startTime, $endTime) {
                 $q->whereBetween('start_time', [$startTime, $endTime])
                     ->orWhereBetween('end_time', [$startTime, $endTime])

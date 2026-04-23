@@ -77,6 +77,23 @@ class AdminController extends Controller
             return back()->with('error', 'Only pending reservations can be approved.');
         }
 
+        $conflictingApproved = Reservation::where('facility_id', $reservation->facility_id)
+            ->where('reservation_date', $reservation->reservation_date)
+            ->where('status', 'approved')
+            ->where(function ($q) use ($reservation) {
+                $q->whereBetween('start_time', [$reservation->start_time, $reservation->end_time])
+                    ->orWhereBetween('end_time', [$reservation->start_time, $reservation->end_time])
+                    ->orWhere(function ($q2) use ($reservation) {
+                        $q2->where('start_time', '<=', $reservation->start_time)
+                            ->where('end_time', '>=', $reservation->end_time);
+                    });
+            })
+            ->exists();
+
+        if ($conflictingApproved) {
+            return back()->with('error', 'Cannot approve this reservation because an approved booking already occupies the same room and time slot. Please reject or reschedule it first.');
+        }
+
         $reservation->update([
             'status' => 'approved',
             'admin_remarks' => $request->input('remarks', 'Approved by admin.'),

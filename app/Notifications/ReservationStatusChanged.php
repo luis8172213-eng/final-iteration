@@ -36,7 +36,7 @@ class ReservationStatusChanged extends Notification
             'reservation_id' => $reservation->id,
             'title' => "Reservation {$status}",
             'message' => "Your reservation for {$facilityName} on {$date} from {$start} to {$end} has been {$reservation->status}.",
-            'action_url' => route('dashboard'),
+            'action_url' => route('reserve'),
             'status' => $reservation->status,
         ];
     }

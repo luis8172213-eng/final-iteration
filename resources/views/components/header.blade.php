@@ -16,7 +16,6 @@
 
     <div class="flex items-center gap-3">
         @auth
-            <a href="/reserve" class="text-sm font-medium text-black hover:text-slate-700">Dashboard</a>
             <a href="{{ route('credentials.index') }}" class="text-sm font-medium text-black hover:text-slate-700">Passwords</a>
             <form method="POST" action="{{ route('logout') }}" class="inline">
                 @csrf

@@ -15,10 +15,12 @@ class CalendarController extends Controller
     // Get all reservations and format them as calendar events
     public function events(Request $request)
     {
-        // I return JSON data that the calendar can display
-        // If someone asks for a specific facility, I filter by that
+        // The public calendar should only show approved reservations.
         $facilityName = $request->query('facility');
-        $query = Reservation::with('facility');
+        $query = Reservation::with('facility')
+            ->where('user_id', Auth::id())
+            ->where('status', 'approved');
+        
         if ($facilityName) {
             $query->whereHas('facility', function ($q) use ($facilityName) {
                 $q->where('name', $facilityName);
@@ -83,6 +85,29 @@ class CalendarController extends Controller
         Notification::send($admins, new ReservationPendingApproval($reservation));
 
         return response()->json(['success' => true, 'reservation' => $reservation]);
+    }
+
+    public function pending(Request $request)
+    {
+        $pendingReservations = Reservation::with('facility')
+            ->where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->orderBy('reservation_date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($reservation) {
+                return [
+                    'id' => $reservation->id,
+                    'facility' => $reservation->facility->name,
+                    'date' => $reservation->reservation_date->format('M d, Y'),
+                    'start_time' => $reservation->start_time->format('H:i'),
+                    'end_time' => $reservation->end_time->format('H:i'),
+                    'purpose' => $reservation->purpose,
+                    'status' => $reservation->status,
+                ];
+            });
+
+        return response()->json($pendingReservations);
     }
 
     // Pick a color for each reservation so they look different on the calendar
