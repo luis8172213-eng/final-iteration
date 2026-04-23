@@ -108,6 +108,13 @@ php artisan db:seed
 php artisan serve
 ```
 
+### Development Setup
+If the app doesn't load properly in browsers (e.g., Chrome), run these in separate terminals simultaneously:
+1. First terminal: `npm run dev` (compiles front-end assets like JS and CSS)
+2. Second terminal: `php artisan serve` (starts the Laravel development server)
+
+Both are needed because Laravel uses Vite for asset compilation, requiring separate processes for front-end builds and back-end serving.
+
 ---
 
 ## 9. Defense Essentials
