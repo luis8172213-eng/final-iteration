@@ -14,10 +14,6 @@
 
             <div class="space-y-3">
                 <div class="rounded-3xl border border-gray-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-900">Account</div>
-                <a href="{{ route('profile.show') }}" class="flex items-center justify-between rounded-3xl border border-gray-200 bg-white px-4 py-4 text-sm font-medium text-gray-700 shadow-sm transition hover:border-black hover:text-black">
-                    <span>Account</span>
-                    <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Active</span>
-                </a>
             </div>
 
             <div class="mt-10 border-t border-gray-200 pt-8">
@@ -37,15 +33,17 @@
                 </div>
 
                 <div class="p-8 space-y-8">
-                    @if(session('status'))
-                        <div class="rounded-3xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-sm text-emerald-800">{{ session('status') }}</div>
-                    @endif
+                    <div id="profile-status" class="{{ session('status') ? '' : 'hidden' }} rounded-3xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-sm text-emerald-800">{{ session('status') }}</div>
+                    <div id="password-change-alert" class="hidden rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                        <span>Password changed successfully. If you did not make this change, </span><a href="{{ route('security.compromised') }}" class="font-semibold underline">secure your account immediately</a>.
+                    </div>
                     @if(session('error'))
                         <div class="rounded-3xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-800">{{ session('error') }}</div>
                     @endif
 
-                    <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="space-y-8">
+                    <form id="profile-settings-form" method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="space-y-8">
                         @csrf
+                        <input type="hidden" id="password-2fa-otp" name="password_2fa_otp">
                         
                         <!-- Hidden inputs for phone and country code submission -->
                         <input type="hidden" name="phone" id="form_phone_input" value="{{ old('phone', auth()->user()->phone ?? '') }}" />
@@ -148,26 +146,44 @@
                             </div>
 
                             <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-                                <div class="grid gap-6 sm:grid-cols-2">
-                                    <label class="block">
-                                        <span class="text-sm font-semibold text-gray-900">Current password</span>
-                                        <input type="password" name="current_password" class="mt-2 w-full rounded-3xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black" placeholder="••••••••" />
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-sm font-semibold text-gray-900">New password</span>
-                                        <input type="password" name="password" class="mt-2 w-full rounded-3xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black" placeholder="••••••••" />
-                                    </label>
+                                <div class="pb-6">
+                                    <p class="text-sm font-semibold text-gray-900">Password Reset</p>
+                                    <p class="mt-2 text-sm text-gray-500">Change your account password securely.</p>
+                                    <button type="button" id="open-password-modal" class="mt-4 rounded-md bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800">Change password</button>
                                 </div>
 
-                                <label class="mt-4 block">
+                                <div class="mt-6">
                                     <span class="text-sm font-semibold text-gray-900">Two-factor authentication</span>
+                                    @if (!auth()->user()->two_fa_enabled)
+                                        <div id="authenticator-setup-panel" class="mt-3 {{ session('authenticator_setup_qr') || old('two_fa_enabled') ? '' : 'hidden' }} rounded-3xl border border-blue-200 bg-blue-50 p-5">
+                                            <p class="text-sm font-semibold text-blue-900">Use an authenticator app</p>
+                                            <p class="mt-1 text-sm text-blue-800">Set up Google Authenticator or Microsoft Authenticator to generate login codes.</p>
+                                            <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                                                <input id="setup-current-password" type="password" name="setup_current_password" class="w-full rounded-3xl border border-blue-200 bg-white px-4 py-3 text-sm" placeholder="Current password">
+                                                <button type="button" id="generate-authenticator-qr" class="rounded-md bg-black px-5 py-3 text-sm font-semibold whitespace-nowrap text-white hover:bg-gray-800">Generate QR code</button>
+                                                <button type="button" id="cancel-authenticator-setup" class="rounded-md bg-red-600 px-5 py-3 text-sm font-semibold whitespace-nowrap text-white hover:bg-red-700">Cancel</button>
+                                            </div>
+                                            <p id="authenticator-setup-error" class="{{ $errors->has('setup_current_password') ? '' : 'hidden' }} mt-2 text-sm text-red-600">{{ $errors->first('setup_current_password') }}</p>
+                                        </div>
+                                    @endif
+                                    <div id="authenticator-qr-result" class="{{ session('authenticator_setup_qr') ? '' : 'hidden' }} mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                                            <p class="text-sm font-semibold text-emerald-900">Scan this QR code</p>
+                                            <img id="authenticator-qr-image" src="{{ session('authenticator_setup_qr') }}" alt="Authenticator setup QR code" class="mt-3 h-48 w-48 bg-white p-2">
+                                            <p class="mt-3 text-sm text-emerald-900">Manual setup key: <strong id="authenticator-secret">{{ session('authenticator_setup_secret') }}</strong></p>
+                                            <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                                                <input type="text" name="authenticator_otp" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required class="w-full rounded-3xl border border-emerald-200 bg-white px-4 py-3 text-sm" placeholder="6-digit authenticator code">
+                                                <button type="submit" formaction="{{ route('profile.2fa.confirm') }}" formmethod="POST" class="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white">Save authenticator</button>
+                                            </div>
+                                            @error('authenticator_otp')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                                    </div>
                                     <div class="mt-3 inline-flex items-center gap-4 rounded-3xl border border-gray-300 bg-slate-50 p-4">
                                         <input type="hidden" name="two_fa_enabled" value="0">
-                                        <input type="checkbox" name="two_fa_enabled" value="1" class="h-5 w-5 rounded border-gray-300 text-black focus:ring-black" {{ old('two_fa_enabled', auth()->user()->two_fa_enabled) ? 'checked' : '' }}>
+                                        <input type="checkbox" id="two_fa_enabled" name="two_fa_enabled" value="1" class="h-5 w-5 rounded border-gray-300 text-black focus:ring-black" {{ old('two_fa_enabled', auth()->user()->two_fa_enabled) ? 'checked' : '' }}>
                                         <span class="text-sm text-gray-700">Enable two-factor authentication</span>
                                     </div>
                                     @error('two_fa_enabled')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-                                </label>
+                                    <div id="disable-2fa-confirmation" class="hidden"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -182,8 +198,408 @@
     </div>
 </main>
 
+<div id="disable-2fa-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="disable-2fa-title">
+    <div class="w-full max-w-md rounded-3xl border border-white/20 bg-white p-6 shadow-2xl">
+        <h2 id="disable-2fa-title" class="text-xl font-semibold text-gray-900">Disable two-factor authentication?</h2>
+        <p class="mt-2 text-sm text-gray-600">For your security, enter your current password and the code from your authenticator app.</p>
+        <div class="mt-5 space-y-4">
+            <label class="block">
+                <span class="text-sm font-semibold text-gray-900">Current password</span>
+                <input id="disable-current-password" form="profile-settings-form" type="password" class="mt-2 w-full rounded-3xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black" autocomplete="current-password">
+            </label>
+            <label class="block">
+                <span class="text-sm font-semibold text-gray-900">Authenticator code</span>
+                <input id="disable-authenticator-code" form="profile-settings-form" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" class="mt-2 w-full rounded-3xl border border-gray-300 px-4 py-3 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-black" placeholder="000000" autocomplete="one-time-code">
+            </label>
+            <p id="disable-2fa-modal-error" class="{{ $errors->has('disable_current_password') || $errors->has('disable_2fa_otp') ? '' : 'hidden' }} text-sm font-medium text-red-600">{{ $errors->first('disable_current_password') ?: $errors->first('disable_2fa_otp') }}</p>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" id="cancel-disable-2fa" class="rounded-full border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700">Cancel</button>
+            <button type="button" id="continue-disable-2fa" class="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white">Continue</button>
+        </div>
+    </div>
+</div>
+
+<div id="password-2fa-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/20 p-4" style="backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);" role="dialog" aria-modal="true" aria-labelledby="password-2fa-title">
+    <div class="w-full max-w-md rounded-3xl border border-white/20 bg-white p-6 shadow-2xl">
+        <h2 id="password-2fa-title" class="text-xl font-semibold text-gray-900">Confirm password change</h2>
+        <p class="mt-2 text-sm text-gray-600">Enter the current six-digit code from your authenticator app to save your new password.</p>
+        <p id="password-2fa-attempts" class="mt-4 text-sm font-medium text-amber-700">You have 3 attempts remaining.</p>
+        <input id="password-authenticator-code" form="profile-settings-form" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" class="mt-5 w-full rounded-3xl border border-gray-300 px-4 py-3 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-black" placeholder="000000" autocomplete="one-time-code">
+        <p id="password-2fa-error" class="hidden mt-3 text-sm font-medium text-red-600"></p>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" id="cancel-password-2fa" class="rounded-md border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700">Cancel</button>
+            <button type="button" id="confirm-password-2fa" class="rounded-md bg-black px-5 py-3 text-sm font-semibold text-white">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="password-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/20 p-4" style="backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);" role="dialog" aria-modal="true" aria-labelledby="password-title">
+    <div class="w-full max-w-md rounded-3xl border border-white/20 bg-white p-6 shadow-2xl">
+        <h2 id="password-title" class="text-xl font-semibold text-gray-900">Change password</h2>
+        <p class="mt-2 text-sm text-gray-600">Enter your current password and choose a new password.</p>
+        <div class="mt-5 space-y-4">
+            <label class="block">
+                <span class="text-sm font-semibold text-gray-900">Current password</span>
+                <input id="password-modal-current" form="profile-settings-form" type="password" name="current_password" class="mt-2 w-full rounded-3xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black" autocomplete="current-password">
+            </label>
+            <label class="block">
+                <span class="text-sm font-semibold text-gray-900">New password</span>
+                <div class="relative mt-2">
+                    <input id="password-modal-new" form="profile-settings-form" type="password" name="password" class="w-full rounded-3xl border border-gray-300 px-4 py-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-black" autocomplete="new-password">
+                    <button type="button" data-password-toggle="password-modal-new" class="absolute inset-y-0 right-3 z-10 bg-transparent px-1 text-xs font-semibold text-gray-600 hover:text-black" aria-label="Show new password">Show</button>
+                </div>
+                <p class="mt-2 text-xs leading-5 text-gray-500">Use 5-30 characters with at least one uppercase letter, one lowercase letter, one number, and one special character: <span class="font-medium text-gray-700">! @ # $ % ^ &amp; * ( ) _ +</span>. For better security, use 12 or more characters.</p>
+            </label>
+            <label class="block">
+                <span class="text-sm font-semibold text-gray-900">Confirm new password</span>
+                <div class="relative mt-2">
+                    <input id="password-modal-confirm" form="profile-settings-form" type="password" name="password_confirmation" class="w-full rounded-3xl border border-gray-300 px-4 py-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-black" autocomplete="new-password">
+                    <button type="button" data-password-toggle="password-modal-confirm" class="absolute inset-y-0 right-3 z-10 bg-transparent px-1 text-xs font-semibold text-gray-600 hover:text-black" aria-label="Show password confirmation">Show</button>
+                </div>
+            </label>
+            <p id="password-modal-error" class="hidden text-sm font-medium text-red-600"></p>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" id="cancel-password-modal" class="rounded-md border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700">Cancel</button>
+            <button type="button" id="save-password-modal" class="rounded-md bg-black px-5 py-3 text-sm font-semibold text-white">Save password</button>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const twoFactorToggle = document.getElementById('two_fa_enabled');
+        const authenticatorSetupPanel = document.getElementById('authenticator-setup-panel');
+        const setupCurrentPassword = document.getElementById('setup-current-password');
+        const disableTwoFactorModal = document.getElementById('disable-2fa-modal');
+        const profileSettingsForm = document.getElementById('profile-settings-form');
+        const disableCurrentPassword = document.getElementById('disable-current-password');
+        const disableAuthenticatorCode = document.getElementById('disable-authenticator-code');
+        const disableModalError = document.getElementById('disable-2fa-modal-error');
+        const passwordTwoFactorModal = document.getElementById('password-2fa-modal');
+        const passwordAuthenticatorCode = document.getElementById('password-authenticator-code');
+        const passwordTwoFactorOtp = document.getElementById('password-2fa-otp');
+        const passwordTwoFactorError = document.getElementById('password-2fa-error');
+        const passwordTwoFactorAttempts = document.getElementById('password-2fa-attempts');
+        const passwordModal = document.getElementById('password-modal');
+        const passwordModalCurrent = document.getElementById('password-modal-current');
+        const passwordModalNew = document.getElementById('password-modal-new');
+        const passwordModalConfirm = document.getElementById('password-modal-confirm');
+        const passwordModalError = document.getElementById('password-modal-error');
+        const passwordRequirement = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{5,30}$/;
+        let passwordTwoFactorConfirmed = false;
+        let disableConfirmed = false;
+
+        document.querySelectorAll('[data-password-toggle]').forEach(function(toggle) {
+            toggle.addEventListener('click', function() {
+                const input = document.getElementById(this.dataset.passwordToggle);
+                const isVisible = input.type === 'text';
+                input.type = isVisible ? 'password' : 'text';
+                this.textContent = isVisible ? 'Show' : 'Hide';
+                this.setAttribute('aria-label', `${isVisible ? 'Show' : 'Hide'} ${input.id === 'password-modal-new' ? 'new password' : 'password confirmation'}`);
+            });
+        });
+
+        function resetPasswordVisibility() {
+            document.querySelectorAll('[data-password-toggle]').forEach(function(toggle) {
+                const input = document.getElementById(toggle.dataset.passwordToggle);
+                input.type = 'password';
+                toggle.textContent = 'Show';
+                toggle.setAttribute('aria-label', input.id === 'password-modal-new' ? 'Show new password' : 'Show password confirmation');
+            });
+        }
+
+        twoFactorToggle?.addEventListener('change', function() {
+            const isDisabling = !this.checked && {{ auth()->user()->two_fa_enabled ? 'true' : 'false' }};
+            const isEnabling = this.checked && {{ auth()->user()->two_fa_enabled ? 'false' : 'true' }};
+            authenticatorSetupPanel?.classList.toggle('hidden', !isEnabling);
+            if (setupCurrentPassword) {
+                setupCurrentPassword.required = isEnabling;
+            }
+
+            if (isEnabling) {
+                setupCurrentPassword?.focus();
+            }
+
+            if (isDisabling) {
+                disableConfirmed = false;
+                disableTwoFactorModal?.classList.remove('hidden');
+                disableTwoFactorModal?.classList.add('flex');
+                disableCurrentPassword?.focus();
+            }
+        });
+
+        document.getElementById('cancel-disable-2fa')?.addEventListener('click', function() {
+            twoFactorToggle.checked = true;
+            disableTwoFactorModal?.classList.add('hidden');
+            disableTwoFactorModal?.classList.remove('flex');
+        });
+
+        document.getElementById('continue-disable-2fa')?.addEventListener('click', function() {
+            disableModalError?.classList.add('hidden');
+            if (!disableCurrentPassword?.value || !disableAuthenticatorCode?.value.match(/^\d{6}$/)) {
+                disableModalError.textContent = 'Enter your current password and a valid 6-digit authenticator code.';
+                disableModalError.classList.remove('hidden');
+                return;
+            }
+
+            const passwordInput = profileSettingsForm.querySelector('input[name="current_password"]');
+            passwordInput.value = disableCurrentPassword.value;
+            disableCurrentPassword.name = 'disable_current_password';
+            disableAuthenticatorCode.name = 'disable_2fa_otp';
+            disableConfirmed = true;
+            disableTwoFactorModal?.classList.add('hidden');
+            disableTwoFactorModal?.classList.remove('flex');
+            profileSettingsForm.requestSubmit();
+        });
+
+        document.getElementById('generate-authenticator-qr')?.addEventListener('click', async function() {
+            const button = this;
+            const setupError = document.getElementById('authenticator-setup-error');
+            if (!setupCurrentPassword?.value) {
+                setupError.textContent = 'Enter your current password.';
+                setupError.classList.remove('hidden');
+                setupCurrentPassword?.focus();
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Generating...';
+            setupError.classList.add('hidden');
+
+            try {
+                const response = await fetch('{{ route('profile.2fa.setup') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    },
+                    body: new FormData(profileSettingsForm),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Unable to generate the QR code.');
+                }
+
+                document.getElementById('authenticator-qr-image').src = data.authenticator_setup_qr;
+                document.getElementById('authenticator-secret').textContent = data.authenticator_setup_secret;
+                document.getElementById('authenticator-qr-result').classList.remove('hidden');
+                document.querySelector('input[name="authenticator_otp"]')?.focus();
+            } catch (error) {
+                setupError.textContent = error.message;
+                setupError.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Generate QR code';
+            }
+        });
+
+        document.getElementById('cancel-authenticator-setup')?.addEventListener('click', function() {
+            twoFactorToggle.checked = false;
+            authenticatorSetupPanel?.classList.add('hidden');
+            setupCurrentPassword.required = false;
+            setupCurrentPassword.value = '';
+            const authenticatorOtpInput = document.querySelector('input[name="authenticator_otp"]');
+            if (authenticatorOtpInput) {
+                authenticatorOtpInput.value = '';
+            }
+            document.getElementById('authenticator-qr-result')?.classList.add('hidden');
+        });
+
+        profileSettingsForm?.addEventListener('submit', function(event) {
+            const isAuthenticatorAction = event.submitter?.formAction?.includes('/profile/2fa/');
+
+            if (!isAuthenticatorAction && {{ auth()->user()->two_fa_enabled ? 'true' : 'false' }} && this.querySelector('input[name="password"]')?.value && !passwordTwoFactorConfirmed) {
+                event.preventDefault();
+                passwordTwoFactorModal?.classList.remove('hidden');
+                passwordTwoFactorModal?.classList.add('flex');
+                passwordAuthenticatorCode?.focus();
+                return;
+            }
+
+            if (!isAuthenticatorAction && !{{ auth()->user()->two_fa_enabled ? 'true' : 'false' }} && twoFactorToggle.checked) {
+                event.preventDefault();
+                authenticatorSetupPanel?.classList.remove('hidden');
+                setupCurrentPassword.required = true;
+                setupCurrentPassword?.focus();
+                return;
+            }
+
+            if ({{ auth()->user()->two_fa_enabled ? 'true' : 'false' }} && !twoFactorToggle.checked && !disableConfirmed) {
+                event.preventDefault();
+                disableTwoFactorModal?.classList.remove('hidden');
+                disableTwoFactorModal?.classList.add('flex');
+                disableCurrentPassword?.focus();
+            }
+        });
+
+        document.getElementById('cancel-password-2fa')?.addEventListener('click', function() {
+            passwordAuthenticatorCode.value = '';
+            passwordTwoFactorOtp.value = '';
+            passwordTwoFactorConfirmed = false;
+            passwordTwoFactorModal.classList.add('hidden');
+            passwordTwoFactorModal.classList.remove('flex');
+        });
+
+        document.getElementById('open-password-modal')?.addEventListener('click', function() {
+            passwordTwoFactorConfirmed = false;
+            passwordModalError.classList.add('hidden');
+            passwordModal.classList.remove('hidden');
+            passwordModal.classList.add('flex');
+            passwordModalCurrent.focus();
+        });
+
+        document.getElementById('cancel-password-modal')?.addEventListener('click', function() {
+            passwordModal.classList.add('hidden');
+            passwordModal.classList.remove('flex');
+            passwordModalCurrent.value = '';
+            passwordModalNew.value = '';
+            passwordModalConfirm.value = '';
+            resetPasswordVisibility();
+        });
+
+        document.getElementById('save-password-modal')?.addEventListener('click', async function() {
+            passwordModalError.classList.add('hidden');
+            if (!passwordModalCurrent.value || !passwordModalNew.value || !passwordModalConfirm.value) {
+                passwordModalError.textContent = 'Complete all password fields.';
+                passwordModalError.classList.remove('hidden');
+                return;
+            }
+
+            if (passwordModalNew.value !== passwordModalConfirm.value) {
+                passwordModalError.textContent = 'The new password and confirmation do not match.';
+                passwordModalError.classList.remove('hidden');
+                return;
+            }
+
+            if (!passwordRequirement.test(passwordModalNew.value)) {
+                passwordModalError.textContent = 'Password must be 5-30 characters with uppercase, lowercase, number, and special character.';
+                passwordModalError.classList.remove('hidden');
+                passwordModalNew.focus();
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = 'Checking...';
+            try {
+                const response = await fetch('{{ route('profile.password.verify') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': profileSettingsForm.querySelector('input[name="_token"]').value,
+                    },
+                    body: new URLSearchParams({ current_password: passwordModalCurrent.value }),
+                    credentials: 'same-origin',
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    passwordModalError.textContent = data.message || 'The current password is incorrect.';
+                    passwordModalError.classList.remove('hidden');
+                    passwordModalCurrent.focus();
+                    return;
+                }
+            } catch (error) {
+                passwordModalError.textContent = 'Unable to verify the current password. Please try again.';
+                passwordModalError.classList.remove('hidden');
+                return;
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Save password';
+            }
+
+            passwordModal.classList.add('hidden');
+            passwordModal.classList.remove('flex');
+            passwordTwoFactorModal.classList.remove('hidden');
+            passwordTwoFactorModal.classList.add('flex');
+            passwordTwoFactorAttempts.textContent = 'You have 3 attempts remaining.';
+            passwordAuthenticatorCode.focus();
+        });
+
+        document.getElementById('confirm-password-2fa')?.addEventListener('click', async function() {
+            passwordTwoFactorError.classList.add('hidden');
+            if (!/^\d{6}$/.test(passwordAuthenticatorCode.value)) {
+                passwordTwoFactorError.textContent = 'Enter a valid 6-digit authenticator code.';
+                passwordTwoFactorError.classList.remove('hidden');
+                return;
+            }
+
+            passwordTwoFactorOtp.value = passwordAuthenticatorCode.value;
+            this.disabled = true;
+            this.textContent = 'Checking...';
+
+            try {
+                const response = await fetch(profileSettingsForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': profileSettingsForm.querySelector('input[name="_token"]').value,
+                    },
+                    body: new FormData(profileSettingsForm),
+                    credentials: 'same-origin',
+                });
+                const data = await response.json();
+                if (response.status === 429) {
+                    passwordTwoFactorError.textContent = data.message || 'Too many invalid authenticator codes. Try again.';
+                    passwordTwoFactorError.classList.remove('hidden');
+                    passwordTwoFactorAttempts.textContent = 'No attempts remaining.';
+                    passwordAuthenticatorCode.value = '';
+                    passwordAuthenticatorCode.focus();
+                    return;
+                }
+                if (!response.ok) {
+                    if (data.errors?.password) {
+                        passwordTwoFactorModal.classList.add('hidden');
+                        passwordTwoFactorModal.classList.remove('flex');
+                        passwordModal.classList.remove('hidden');
+                        passwordModal.classList.add('flex');
+                        passwordModalError.textContent = data.errors.password[0];
+                        passwordModalError.classList.remove('hidden');
+                        passwordModalNew.focus();
+                        return;
+                    }
+                    passwordTwoFactorError.textContent = data.message || 'Invalid Authenticator Code';
+                    passwordTwoFactorError.classList.remove('hidden');
+                    passwordTwoFactorAttempts.textContent = `You have ${data.attempts_remaining || 2} attempts remaining.`;
+                    passwordAuthenticatorCode.value = '';
+                    passwordAuthenticatorCode.focus();
+                    return;
+                }
+
+                passwordTwoFactorConfirmed = true;
+                passwordTwoFactorModal.classList.add('hidden');
+                passwordTwoFactorModal.classList.remove('flex');
+                passwordModalCurrent.value = '';
+                passwordModalNew.value = '';
+                passwordModalConfirm.value = '';
+                passwordTwoFactorOtp.value = '';
+                const profileStatus = document.getElementById('profile-status');
+                if (profileStatus) {
+                    profileStatus.textContent = data.status || 'Password updated successfully.';
+                    profileStatus.classList.remove('hidden');
+                }
+                if (data.password_changed) {
+                    document.getElementById('password-change-alert')?.classList.remove('hidden');
+                }
+            } catch (requestError) {
+                passwordTwoFactorError.textContent = requestError.message;
+                passwordTwoFactorError.classList.remove('hidden');
+                passwordAuthenticatorCode.value = '';
+                passwordAuthenticatorCode.focus();
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Confirm';
+            }
+        });
+
+        @if (session('show_disable_2fa_otp') || $errors->has('disable_current_password') || $errors->has('disable_2fa_otp'))
+            disableTwoFactorModal?.classList.remove('hidden');
+            disableTwoFactorModal?.classList.add('flex');
+            disableCurrentPassword?.focus();
+        @endif
+
         // Phone number edit functionality
         const displayMode = document.getElementById('phone_display_mode');
         const editMode = document.getElementById('phone_edit_mode');

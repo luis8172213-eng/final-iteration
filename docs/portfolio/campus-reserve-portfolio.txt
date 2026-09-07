@@ -1,0 +1,57 @@
+Campus Reserve - Smart Facility Reservation System
+
+Portfolio Builder 1
+Building Your System Administration Plan
+
+Part A — Understanding Your Capstone Project
+Project Title: Campus Reserve - Smart Facility Reservation System
+
+Brief Project Description:
+Campus Reserve is a web-based reservation system designed to help a campus or educational institution manage the booking of shared facilities such as rooms, classrooms, and meeting spaces. The system allows users to submit reservation requests, view facility availability, and track the status of their bookings.
+
+Intended Users:
+The system is intended for students, faculty, staff, and administrators who need a structured and organized way to reserve campus facilities.
+
+Organization or Client:
+The project is intended for a school or campus organization that needs a digital solution for facility management and scheduling.
+
+Part B — The Future System Administrator
+Once the system is deployed, the person responsible for administering it would be the assigned system administrator or IT support personnel of the organization. Their primary responsibilities would include managing user accounts, maintaining system availability, protecting data, reviewing logs, and ensuring that the reservation system continues to function properly.
+
+They would need technical skills in web application administration, database management, security monitoring, troubleshooting, and backup procedures. Their daily tasks may include checking whether the system is running correctly, reviewing alerts or errors, managing access permissions, and resolving issues related to logins, reservations, or system performance.
+
+Part C — Operational Responsibilities
+The following operational activities will be necessary after deployment:
+
+1. Creating user accounts
+This is necessary to allow only authorized users to access the system and use its features.
+
+2. Monitoring system availability
+This is necessary to ensure that the reservation platform remains accessible and reliable for users.
+
+3. Performing data backups
+This is necessary to protect reservation records and prevent data loss in case of system failure or accidental deletion.
+
+4. Installing software updates and security patches
+This is necessary to improve performance, fix vulnerabilities, and keep the system secure.
+
+5. Reviewing security logs
+This is necessary to detect suspicious activity, failed login attempts, and other possible security issues.
+
+6. Managing user permissions and roles
+This is necessary to ensure that only authorized users can approve reservations or perform administrative tasks.
+
+Part D — System Administration Across the SDLC
+
+| SDLC Phase | Administrative Activity |
+|-----------|-------------------------|
+| Planning | Define the roles, responsibilities, and support expectations for the future system administrator. |
+| Requirements Analysis | Identify access needs, backup requirements, security expectations, and monitoring needs. |
+| System Design | Plan user roles, secure authentication, logging, and administrative controls during the design stage. |
+| Development | Implement secure login features, admin workflows, notifications, and audit logging. |
+| Testing | Validate user access, reservation workflows, error handling, and recovery procedures before deployment. |
+| Deployment | Configure the production environment, create accounts, and ensure the system is ready for use. |
+| Maintenance | Monitor performance, apply updates, fix issues, and maintain system security after deployment. |
+
+Part E — Personal Reflection
+Organizations should begin planning system administration activities during system development rather than waiting until after deployment because this helps prevent problems before they happen. If administration is only considered after the system is live, the organization may face issues such as weak security, poor user management, lack of backup procedures, and slower responses to technical problems. Planning early allows administrators to design the system with monitoring, support, backup, and security in mind, which makes the system more reliable and easier to manage over time.

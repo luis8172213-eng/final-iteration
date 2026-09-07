@@ -65,6 +65,10 @@ Route::middleware('guest')->group(function () {
     // Login
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/forgot-password', [AuthController::class, 'sendPasswordResetLink'])->name('password.email')->middleware('throttle:5,1');
+    Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update')->middleware('throttle:5,1');
 
     // Register
     Route::get('/signup', [AuthController::class, 'showRegister'])->name('register');
@@ -203,7 +207,11 @@ Route::middleware('auth')->group(function () {
 
     // Profile settings
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
+    Route::post('/profile/password/verify', [AuthController::class, 'verifyCurrentPassword'])->name('profile.password.verify');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
+    Route::view('/security/account-compromised', 'security.compromised')->name('security.compromised');
+    Route::post('/profile/2fa/setup', [AuthController::class, 'setupAuthenticator'])->name('profile.2fa.setup');
+    Route::post('/profile/2fa/confirm', [AuthController::class, 'confirmAuthenticator'])->name('profile.2fa.confirm');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markRead');

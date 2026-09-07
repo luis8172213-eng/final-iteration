@@ -4,15 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Otp;
+use App\Notifications\PasswordChanged;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Laravel\Socialite\Facades\Socialite;
 use GuzzleHttp\Client;
+use OTPHP\TOTP;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\SvgWriter;
 
 class AuthController extends Controller
 {
@@ -31,6 +36,66 @@ class AuthController extends Controller
         }
 
         return view('auth.login');
+    }
+
+    public function showForgotPassword()
+    {
+        return view('auth.forgot-password');
+    }
+
+    public function sendPasswordResetLink(Request $request)
+    {
+        $request->validate(['email' => ['required', 'email']]);
+        $email = strtolower($request->email);
+        $user = User::where('email_hash', hash('sha256', $email))->first();
+
+        if ($user) {
+            $token = Str::random(64);
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $email],
+                ['token' => Hash::make($token), 'created_at' => now()]
+            );
+
+            $resetUrl = route('password.reset', ['token' => $token, 'email' => $email]);
+            Mail::raw("Reset your Campus Reserve password using this link:\n\n{$resetUrl}\n\nThis link expires in 60 minutes. If you did not request a reset, ignore this email.", function ($message) use ($email): void {
+                $message->to($email)->subject('Reset your Campus Reserve password');
+            });
+        }
+
+        return back()->with('status', 'If an account exists for that email, a password reset link has been sent.');
+    }
+
+    public function showResetPassword(Request $request, string $token)
+    {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => $request->query('email'),
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', 'min:5', 'max:30', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{5,30}$/'],
+        ]);
+
+        $email = strtolower($request->email);
+        $reset = DB::table('password_reset_tokens')->where('email', $email)->first();
+        if (! $reset || Carbon::parse($reset->created_at)->addHour()->isPast() || ! Hash::check($request->token, $reset->token)) {
+            return back()->withErrors(['email' => 'This password reset link is invalid or expired.'])->withInput();
+        }
+
+        $user = User::where('email_hash', hash('sha256', $email))->first();
+        if (! $user) {
+            return back()->withErrors(['email' => 'This password reset link is invalid or expired.'])->withInput();
+        }
+
+        $user->update(['password' => $request->password]);
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        return redirect()->route('login')->with('status', 'Your password has been reset. You can now log in.');
     }
 
     /**
@@ -97,7 +162,7 @@ class AuthController extends Controller
         session()->put('remember_device', $request->boolean('remember_device'));
 
         try {
-            $this->issueOtp($user);
+            $this->prepareLoginTwoFactor($user);
         } catch (\Exception $e) {
             logger()->error('Admin OTP generation failed', [
                 'user_id' => $user->id,
@@ -148,6 +213,10 @@ class AuthController extends Controller
 
             session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_admin_2fa']);
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'The provided credentials do not match our records.'], 422);
+            }
+
             return back()->withErrors([
                 'email' => 'The provided credentials do not match our records.',
             ])->onlyInput('email');
@@ -157,6 +226,10 @@ class AuthController extends Controller
             Auth::login($user);
             $request->session()->regenerate();
 
+            if ($request->expectsJson()) {
+                return response()->json(['redirect' => url('/reserve')])->withCookie($this->refreshRememberDeviceCookie($user));
+            }
+
             return redirect('/reserve')->withCookie($this->refreshRememberDeviceCookie($user));
         }
 
@@ -164,6 +237,11 @@ class AuthController extends Controller
             logger()->debug('Login user has 2FA disabled', ['user_id' => $user->id]);
             Auth::login($user);
             $request->session()->regenerate();
+
+            if ($request->expectsJson()) {
+                return response()->json(['redirect' => url('/reserve')]);
+            }
+
             return redirect('/reserve');
         }
 
@@ -171,16 +249,18 @@ class AuthController extends Controller
         session()->put('remember_device', $request->boolean('remember_device'));
 
         try {
-            $this->issueOtp($user);
+            $this->prepareLoginTwoFactor($user);
         } catch (\Exception $e) {
             logger()->error('OTP generation failed', [
                 'user_id' => $user->id,
                 'exception' => $e->getMessage(),
             ]);
 
-            return back()
-                ->withErrors(['email' => 'Unable to generate the 2FA code. Please try again.'])
-                ->onlyInput('email');
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unable to generate the 2FA code. Please try again.'], 422);
+            }
+
+            return back()->withErrors(['email' => 'Unable to generate the 2FA code. Please try again.'])->onlyInput('email');
         }
 
         session()->put([
@@ -188,9 +268,19 @@ class AuthController extends Controller
             'pending_2fa_email' => $user->email,
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'two_factor_required' => true,
+                'method' => session('pending_2fa_method'),
+                'email' => $user->email,
+            ]);
+        }
+
         return back()->with([
             'show_2fa_modal' => true,
-            'status' => 'A 6-digit code has been generated and logged.',
+            'status' => session('pending_2fa_method') === 'authenticator'
+                ? 'Enter the code from your authenticator app.'
+                : 'A 6-digit verification code has been sent to your email.',
         ]);
     }
 
@@ -212,26 +302,118 @@ class AuthController extends Controller
             'attempts' => 0,
         ]);
 
-        $this->logOtp($user, $otpCode);
+        $this->sendOtpEmail($user, $otpCode);
 
         session()->put('time_left', 30);
     }
 
-    private function logOtp(User $user, string $otp): void
+    private function prepareLoginTwoFactor(User $user): void
     {
-        // Save the OTP to a file for testing
-        // In production, would be sent via email or SMS
-        $logPath = storage_path('logs/otp.log');
-        $expiresAt = now()->addSeconds(30)->toDateTimeString();
+        if ($user->two_fa_secret) {
+            session()->put([
+                'pending_2fa_method' => 'authenticator',
+                'authenticator_2fa_attempts' => 0,
+                'two_fa_attempts_remaining' => 3,
+            ]);
+            return;
+        }
 
-        $entry = sprintf(
-            "Otp Code: %s\nEmail: %s\nTime of Expiration: %s\n\n---\n\n",
-            $otp,
-            $user->email,
-            $expiresAt
+        session()->put('pending_2fa_method', 'email');
+        $this->issueOtp($user);
+    }
+
+    private function sendOtpEmail(User $user, string $otp): void
+    {
+        Mail::raw(
+            "Campus Reserve\n\nYour one-time password (OTP) is:\n\n{$otp}\n\nEnter this 6-digit code on the verification screen. It expires in 30 seconds. If you did not try to sign in, you can ignore this email.",
+            function ($message) use ($user): void {
+                $message->to($user->email)
+                    ->subject('Your Campus Reserve OTP code');
+            }
         );
+    }
 
-        File::append($logPath, $entry);
+    public function setupAuthenticator(Request $request)
+    {
+        $user = Auth::user();
+
+        $isChangingPassword = $request->filled('password');
+        if ($isChangingPassword) {
+            $request->validate([
+                'current_password' => ['required', 'string'],
+                'password' => ['required', 'confirmed', 'min:5', 'max:30', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{5,30}$/'],
+                'password_2fa_otp' => ['nullable', 'digits:6'],
+            ]);
+
+            if (! Hash::check($request->current_password, $user->password)) {
+                return $this->profileValidationResponse($request, 'current_password', 'The current password is incorrect.');
+            }
+
+            if ($user->two_fa_secret && ! $request->filled('password_2fa_otp')) {
+                return $this->profileValidationResponse($request, 'password_2fa_otp', 'Enter your authenticator code to change your password.');
+            }
+
+            if ($user->two_fa_secret && ! TOTP::createFromSecret($user->two_fa_secret)->verify($request->password_2fa_otp)) {
+                $attempts = (int) session('password_2fa_attempts', 0) + 1;
+                if ($attempts >= 3) {
+                    session()->forget('password_2fa_attempts');
+                    if ($request->expectsJson()) {
+                        return response()->json(['message' => 'Too many invalid authenticator codes. Try again.'], 429);
+                    }
+
+                    return back()->withErrors(['password_2fa_otp' => 'Too many invalid authenticator codes. Try again.'])->withInput();
+                }
+
+                session(['password_2fa_attempts' => $attempts]);
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Invalid Authenticator Code', 'attempts_remaining' => 3 - $attempts], 422);
+                }
+
+                return $this->profileValidationResponse($request, 'password_2fa_otp', 'Invalid Authenticator Code');
+            }
+
+            session()->forget('password_2fa_attempts');
+        }
+        if (! Hash::check($request->input('setup_current_password'), $user->password)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'The current password is incorrect.'], 422);
+            }
+
+            return back()->withErrors(['setup_current_password' => 'The current password is incorrect.']);
+        }
+
+        $totp = TOTP::generate();
+        $totp->setLabel($user->email);
+        $totp->setIssuer('Campus Reserve');
+        session(['pending_authenticator_secret' => $totp->getSecret()]);
+
+        $setup = [
+            'authenticator_setup_uri' => $totp->getProvisioningUri(),
+            'authenticator_setup_qr' => (new SvgWriter())->write(new QrCode($totp->getProvisioningUri()))->getDataUri(),
+            'authenticator_setup_secret' => $totp->getSecret(),
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($setup);
+        }
+
+        return back()->with($setup);
+    }
+
+    public function confirmAuthenticator(Request $request)
+    {
+        $request->validate(['authenticator_otp' => ['required', 'digits:6']]);
+        $secret = session('pending_authenticator_secret');
+        $user = Auth::user();
+
+        if (! $secret || ! TOTP::createFromSecret($secret)->verify($request->authenticator_otp, null, 29)) {
+            return back()->withErrors(['authenticator_otp' => 'The authenticator code is invalid.'])->withInput();
+        }
+
+        $user->update(['two_fa_secret' => $secret, 'two_fa_enabled' => true]);
+        session()->forget('pending_authenticator_secret');
+
+        return back()->with('status', 'Authenticator app 2FA is now enabled.');
     }
 
     
@@ -240,8 +422,23 @@ class AuthController extends Controller
         return view('profile');
     }
 
+    public function verifyCurrentPassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+        ]);
+
+        if (! Hash::check($request->current_password, Auth::user()->password)) {
+            return response()->json(['message' => 'The current password is incorrect.'], 422);
+        }
+
+        return response()->json(['valid' => true]);
+    }
+
     public function updateProfile(Request $request)
     {
+        $isChangingPassword = $request->filled('password');
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'country_code' => ['nullable', 'string', 'in:+1,+44,+63,+81,+91,+86,+33,+49,+39,+61'],
@@ -251,6 +448,99 @@ class AuthController extends Controller
         ]);
 
         $user = Auth::user();
+
+        if ($isChangingPassword) {
+            $request->validate([
+                'current_password' => ['required', 'string'],
+                'password' => ['required', 'confirmed', 'min:5', 'max:30', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{5,30}$/'],
+                'password_2fa_otp' => ['nullable', 'digits:6'],
+            ]);
+
+            if (! Hash::check($request->current_password, $user->password)) {
+                return $this->profileValidationResponse($request, 'current_password', 'The current password is incorrect.');
+            }
+
+            if ($user->two_fa_enabled && ! $user->two_fa_secret) {
+                return $this->profileValidationResponse($request, 'password_2fa_otp', 'Authenticator verification is unavailable. Please set up 2FA again.');
+            }
+
+            if ($user->two_fa_enabled && ! $request->filled('password_2fa_otp')) {
+                return $this->profileValidationResponse($request, 'password_2fa_otp', 'Enter your authenticator code to change your password.');
+            }
+
+            if ($user->two_fa_enabled && ! TOTP::createFromSecret($user->two_fa_secret)->verify($request->password_2fa_otp)) {
+                $attempts = (int) session('password_2fa_attempts', 0) + 1;
+                if ($attempts >= 3) {
+                    session()->forget('password_2fa_attempts');
+                    return response()->json(['message' => 'Too many invalid authenticator codes. Try again.'], 429);
+                }
+
+                session(['password_2fa_attempts' => $attempts]);
+                return response()->json(['message' => 'Invalid Authenticator Code', 'attempts_remaining' => 3 - $attempts], 422);
+            }
+
+            session()->forget('password_2fa_attempts');
+        }
+
+        if ($request->boolean('two_fa_enabled') && ! $user->two_fa_enabled && ! $user->two_fa_secret) {
+            return redirect()->route('profile.show')->withErrors([
+                'two_fa_enabled' => 'Set up and confirm your authenticator app before enabling 2FA.',
+            ]);
+        }
+
+        $isDisablingTwoFactor = $user->two_fa_enabled && ! $request->boolean('two_fa_enabled');
+        if ($isDisablingTwoFactor) {
+            $request->validate([
+                'disable_current_password' => ['required', 'string'],
+                'disable_2fa_otp' => ['nullable', 'digits:6'],
+            ]);
+
+            if (! Hash::check($request->disable_current_password, $user->password)) {
+                return back()->withErrors([
+                    'disable_current_password' => 'The current password is incorrect.',
+                ])->withInput();
+            }
+
+            if (! $request->filled('disable_2fa_otp')) {
+                if ($user->two_fa_secret) {
+                    return back()->with('show_disable_2fa_otp', true)->with(
+                        'status',
+                        'Enter the current code from your authenticator app to disable 2FA.'
+                    )->withInput();
+                }
+
+                $this->issueOtp($user);
+
+                return back()->with('show_disable_2fa_otp', true)->with(
+                    'status',
+                    'A verification code was sent to your email. Enter it to disable 2FA.'
+                )->withInput();
+            }
+
+            if ($user->two_fa_secret) {
+                if (! TOTP::createFromSecret($user->two_fa_secret)->verify($request->disable_2fa_otp, null, 29)) {
+                    return back()->withErrors([
+                        'disable_2fa_otp' => 'Invalid Authenticator Code',
+                    ])->with('show_disable_2fa_otp', true)->withInput();
+                }
+
+                $user->update(['two_fa_enabled' => false]);
+                return back()->with('status', 'Two-factor authentication has been disabled.');
+            }
+
+            $otp = Otp::where('user_id', $user->id)->latest()->first();
+            if (! $otp || ! $otp->isValid() || ! Hash::check($request->disable_2fa_otp, $otp->code)) {
+                if ($otp && $otp->isValid()) {
+                    $otp->incrementAttempts();
+                }
+
+                return back()->withErrors([
+                    'disable_2fa_otp' => 'Invalid Authenticator Code',
+                ])->with('show_disable_2fa_otp', true)->withInput();
+            }
+
+            $otp->delete();
+        }
 
         $data = [
             'name' => $request->name,
@@ -272,9 +562,40 @@ class AuthController extends Controller
             $data['profile_picture'] = $request->file('profile_picture')->store('profile_pictures', 'public');
         }
 
+        if ($isChangingPassword) {
+            $data['password'] = $request->password;
+        }
+
         $user->update($data);
 
-        return back()->with('status', 'Profile updated successfully.');
+        if ($isChangingPassword) {
+            try {
+                $user->notify(new PasswordChanged());
+            } catch (\Throwable $exception) {
+                logger()->error('Password change security email could not be sent.', [
+                    'user_id' => $user->id,
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => $isChangingPassword ? 'Password changed successfully.' : 'Profile updated successfully.',
+                'password_changed' => $isChangingPassword,
+            ]);
+        }
+
+        return back()->with('status', $isChangingPassword ? 'Password changed successfully.' : 'Profile updated successfully.');
+    }
+
+    private function profileValidationResponse(Request $request, string $field, string $message)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'field' => $field], 422);
+        }
+
+        return back()->withErrors([$field => $message])->withInput();
     }
 
     /**
@@ -382,14 +703,15 @@ class AuthController extends Controller
             return redirect('/login');
         }
 
+        $user = User::findOrFail($userId);
         $otp = Otp::where('user_id', $userId)->latest()->first();
 
-        if (! $otp || $otp->isExpired()) {
+        if (! $user->two_fa_secret && (! $otp || $otp->isExpired())) {
             $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left']);
             return redirect('/login')->with('error', '2FA code expired. Please login again.');
         }
 
-        $timeLeft = $otp->expires_at->diffInSeconds(now(), false);
+        $timeLeft = $user->two_fa_secret ? TOTP::createFromSecret($user->two_fa_secret)->expiresIn() : $otp->expires_at->diffInSeconds(now(), false);
 
         return view('auth.2fa-verify', compact('timeLeft'));
     }
@@ -406,6 +728,46 @@ class AuthController extends Controller
         $userId = session('pending_2fa_user_id');
         $user = User::findOrFail($userId);
         $otp = Otp::where('user_id', $userId)->latest()->first();
+
+        if ($user->two_fa_secret) {
+            $attempts = (int) session('authenticator_2fa_attempts', 0);
+            if ($attempts >= 3) {
+                $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'pending_2fa_method', 'authenticator_2fa_attempts']);
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Too many invalid authenticator codes. Please log in again.', 'redirect' => route('login')], 429);
+                }
+                return redirect()->route('login')->withErrors(['email' => 'Too many invalid authenticator codes. Please log in again.']);
+            }
+
+            if (! TOTP::createFromSecret($user->two_fa_secret)->verify($request->otp, null, 29)) {
+                $attempts++;
+                if ($attempts >= 3) {
+                    $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'pending_2fa_method', 'authenticator_2fa_attempts']);
+                    if ($request->expectsJson()) {
+                        return response()->json(['message' => 'Too many invalid authenticator codes. Please log in again.', 'redirect' => route('login')], 429);
+                    }
+                    return redirect()->route('login')->withErrors(['email' => 'Too many invalid authenticator codes. Please log in again.']);
+                }
+
+                session([
+                    'authenticator_2fa_attempts' => $attempts,
+                    'two_fa_attempts_remaining' => 3 - $attempts,
+                ]);
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Invalid Authenticator Code', 'attempts_remaining' => 3 - $attempts], 422);
+                }
+                return back()->with(['show_2fa_modal' => true, 'two_fa_attempts_remaining' => 3 - $attempts])->withErrors(['otp' => 'Invalid Authenticator Code']);
+            }
+
+            $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_2fa_method', 'authenticator_2fa_attempts']);
+            $isAdminLogin = session()->pull('pending_admin_2fa', false);
+            Auth::login($user);
+            $request->session()->regenerate();
+            if ($request->expectsJson()) {
+                return response()->json(['redirect' => $isAdminLogin ? url('/admin/dashboard') : url('/reserve')]);
+            }
+            return redirect($isAdminLogin ? '/admin/dashboard' : '/reserve');
+        }
 
         if (! $otp || ! $otp->isValid()) {
             return back()->with([
@@ -452,7 +814,7 @@ class AuthController extends Controller
             return redirect('/login')->with('error', 'Session expired. Login again.');
         }
 
-        $this->issueOtp($user);
+        $this->prepareLoginTwoFactor($user);
 
         session()->flash('show_2fa_modal', true);
 

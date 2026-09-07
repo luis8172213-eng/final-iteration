@@ -23,10 +23,12 @@ class User extends Authenticatable
         'phone',
         'profile_picture',
         'two_fa_enabled',
+        'two_fa_secret',
         'remember_device_token',
         'remember_device_expires_at',
         'is_admin',
         'is_super_admin',
+        'two_fa_secret',
     ];
 
     /**
@@ -54,6 +56,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'remember_device_expires_at' => 'datetime',
         'two_fa_enabled' => 'boolean',
+        'two_fa_secret' => 'encrypted',
         'is_admin' => 'boolean',
         'is_super_admin' => 'boolean',
     ];

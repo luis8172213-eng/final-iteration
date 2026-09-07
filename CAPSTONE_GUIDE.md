@@ -1,5 +1,19 @@
 ﻿# Campus Reserve Capstone Guide
 
+## Table of Contents
+1. [Project Overview](#1-project-overview)
+2. [Core Components](#2-core-components)
+3. [Login & Security](#3-login--security)
+4. [Reservation Flow](#4-reservation-flow)
+5. [Calendar & Notifications](#5-calendar--notifications)
+6. [Admin Workflow](#6-admin-workflow)
+7. [Simple System Flows](#7-simple-system-flows)
+8. [Database & Deployment](#8-database--deployment)
+9. [Defense Essentials](#9-defense-essentials)
+10. [Quick Reference](#10-quick-reference)
+
+---
+
 ## 1. Project Overview
 Campus Reserve is a Laravel app for reserving campus facilities. It includes user login, optional 2FA, reservation requests, admin approval, a visual calendar, notifications, and encrypted user data.
 

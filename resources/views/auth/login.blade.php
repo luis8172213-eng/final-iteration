@@ -36,6 +36,7 @@
             <!-- Login Form -->
             <form method="POST" action="{{ route('login') }}" class="space-y-6" id="loginForm">
                 @csrf
+                <div id="loginFormError" class="hidden rounded bg-red-100 px-4 py-3 text-sm text-red-700"></div>
                 
                 <div class="space-y-2">
                     <label for="email" class="block text-sm text-gray-700">Email</label>
@@ -64,6 +65,9 @@
                     @error('password')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
+                    <div class="text-right">
+                        <a href="{{ route('password.request') }}" class="text-sm text-blue-600 hover:underline">Forgot password?</a>
+                    </div>
                 </div>
                 
                 <!-- Device Remember & Submit -->
@@ -85,24 +89,29 @@
             </form>
 
             <!-- 2FA Modal -->
-            @if (session('show_2fa_modal') && session('pending_2fa_user_id'))
-<div id="2faModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in zoom-in duration-200">
+<div id="2faModal" class="fixed inset-0 {{ session('show_2fa_modal') && session('pending_2fa_user_id') ? 'flex' : 'hidden' }} items-center justify-center z-50 p-4 animate-in fade-in zoom-in duration-200" style="background: rgba(0, 0, 0, 0.18); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
                 <div class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-w-sm w-full border border-gray-200 animate-in slide-in-from-bottom-4 duration-300">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-900">Verify Your Login</h2>
                         <button onclick="close2faModal()" class="text-gray-500 hover:text-gray-900 text-xl p-1 rounded-full hover:bg-gray-200 transition-all">&times;</button>
                     </div>
                     
-                    <p class="text-gray-700 mb-2 text-lg font-medium">An OTP has been generated for your account.</p>
-                    <p class="text-sm text-gray-500 mb-2">Enter the 6-digit code from the server log.</p>
-                    <p class="text-xs text-gray-500 mb-4">This code expires in 30 seconds and is logged for development.</p>
+                    <div id="two-factor-instructions">
+                        @if (session('pending_2fa_method') === 'authenticator')
+                            <p class="text-gray-700 mb-2 text-lg font-medium">Enter your authenticator code.</p>
+                            <p class="text-sm text-gray-500 mb-4">Open Google Authenticator or Microsoft Authenticator and enter the current 6-digit code.</p>
+                        @else
+                            <p class="text-gray-700 mb-2 text-lg font-medium">Enter the code sent to your email.</p>
+                            <p class="text-sm text-gray-500 mb-4">This code expires in 30 seconds.</p>
+                        @endif
+                    </div>
                     
                     <div class="text-center mb-8">
                         <div class="text-lg font-mono bg-gray-100 rounded-lg p-4 mb-2">{{ session('pending_2fa_email') }}</div>
-                        <p class="text-xs text-gray-500">Time remaining: <span id="otpTimer">30s</span></p>
+                        <p id="two-factor-attempts-warning" class="text-sm font-medium text-amber-700">You have {{ session('two_fa_attempts_remaining', 3) }} attempts remaining.</p>
                     </div>
                     
-                    <form method="POST" action="{{ route('2fa.verify') }}" class="space-y-6">
+                    <form id="verify2faForm" method="POST" action="{{ route('2fa.verify') }}" class="space-y-6">
                         @csrf
                         
                         <div>
@@ -118,9 +127,7 @@
                                 class="w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-black focus:outline-none text-center text-2xl font-bold tracking-widest uppercase bg-gray-50 hover:bg-white transition-all"
                                 placeholder="000000"
                             >
-                            @error('otp')
-                                <p class="text-red-500 text-xs mt-2 text-center">{{ $message }}</p>
-                            @enderror
+                            <p id="two-factor-code-error" class="{{ $errors->has('otp') ? '' : 'hidden' }} text-red-500 text-xs mt-2 text-center">{{ $errors->first('otp') }}</p>
                         </div>
                         
                         <div class="flex gap-3 pt-2">
@@ -135,28 +142,30 @@
                                 type="submit"
                                 class="flex-1 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-900 transition-all font-bold shadow-lg hover:shadow-xl"
                             >
-                                Verify
+                                Confirm
                             </button>
                         </div>
                     </form>
                     
                     <div class="flex items-center justify-center gap-2 mt-6 pt-6 border-t border-gray-200">
-                        <form id="resendOtpForm" method="POST" action="{{ route('2fa.resend') }}" class="inline-flex items-center">
-                            @csrf
-                            <button type="submit" class="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors">
-                                Resend Code
-                            </button>
-                        </form>
-                        <span class="text-xs text-gray-500">| The code is logged for development and expires quickly.</span>
+                        <div id="two-factor-resend" class="{{ session('pending_2fa_method') === 'authenticator' ? 'hidden' : '' }}">
+                            <form id="resendOtpForm" method="POST" action="{{ route('2fa.resend') }}" class="inline-flex items-center">
+                                @csrf
+                                <button type="submit" class="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors">
+                                    Resend Code
+                                </button>
+                            </form>
+                            <span class="text-xs text-gray-500">| Code expires quickly.</span>
+                        </div>
+                        <span id="authenticator-refresh-message" class="{{ session('pending_2fa_method') === 'authenticator' ? '' : 'hidden' }} text-xs text-gray-500">Your authenticator code refreshes automatically.</span>
                     </div>
                     <div id="otpStatusMessage" class="text-center text-sm text-green-700 mt-3"></div>
                     
                     <button onclick="location.href='{{ route('login') }}'" class="w-full mt-6 py-2 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium text-sm">
-                        ← Back to Login
+                        Cancel
                     </button>
                 </div>
             </div>
-            @endif
             
             <div class="mt-6 text-center">
                 <p class="text-sm text-gray-600 mb-4">Or use below to login to your account</p>
@@ -194,37 +203,114 @@
 </main>
 
 <script>
-var timeLeft = {{ session('time_left', 30) }};
-var timerInterval = null;
-const timerEl = document.getElementById('otpTimer');
+document.getElementById('loginForm')?.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const form = this;
+    const submitButton = form.querySelector('button[type="submit"]');
+    const error = document.getElementById('loginFormError');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Checking...';
+    error.classList.add('hidden');
 
-function startTimer() {
-    // Clear any existing timer
-    if (timerInterval) {
-        clearInterval(timerInterval);
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+            },
+            body: new FormData(form),
+            credentials: 'same-origin',
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json')
+            ? await response.json()
+            : {};
+        if (!response.ok) {
+            throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || 'The provided credentials do not match our records.');
+        }
+
+        if (data.redirect) {
+            window.location.href = data.redirect;
+            return;
+        }
+
+        if (data.two_factor_required) {
+            const modal = document.getElementById('2faModal');
+            const instructions = document.getElementById('two-factor-instructions');
+            const resend = document.getElementById('two-factor-resend');
+            const refreshMessage = document.getElementById('authenticator-refresh-message');
+            document.getElementById('2faModal').querySelector('.text-lg.font-mono').textContent = data.email;
+            instructions.innerHTML = data.method === 'authenticator'
+                ? '<p class="text-gray-700 mb-2 text-lg font-medium">Enter your authenticator code.</p><p class="text-sm text-gray-500 mb-4">Open Google Authenticator or Microsoft Authenticator and enter the current 6-digit code.</p>'
+                : '<p class="text-gray-700 mb-2 text-lg font-medium">Enter the code sent to your email.</p><p class="text-sm text-gray-500 mb-4">This code expires in 30 seconds.</p>';
+            resend.classList.toggle('hidden', data.method === 'authenticator');
+            refreshMessage.classList.toggle('hidden', data.method !== 'authenticator');
+            document.getElementById('two-factor-attempts-warning').textContent = 'You have 3 attempts remaining.';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('verify_otp').focus();
+        }
+    } catch (requestError) {
+        error.textContent = requestError.message;
+        error.classList.remove('hidden');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Log In';
     }
+});
 
-    if (timerEl && timeLeft > 0) {
-        timerEl.innerHTML = timeLeft + 's';
-        
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            if (timeLeft > 0) {
-                timerEl.textContent = timeLeft + 's';
-            } else {
-                clearInterval(timerInterval);
-                timerEl.innerHTML = '<span class="text-red-500">Expired — click Resend Code</span>';
+document.getElementById('verify2faForm')?.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const form = this;
+    const button = form.querySelector('button[type="submit"]');
+    const error = document.getElementById('two-factor-code-error');
+    const warning = document.getElementById('two-factor-attempts-warning');
+    button.disabled = true;
+    button.textContent = 'Checking...';
+    error.classList.add('hidden');
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+            },
+            body: new FormData(form),
+            credentials: 'same-origin',
+        });
+        const data = await response.json();
+
+        if (response.status === 429) {
+            window.location.href = data.redirect || '{{ route('login') }}';
+            return;
+        }
+
+        if (!response.ok) {
+            error.textContent = data.message || 'Invalid Authenticator Code';
+            error.classList.remove('hidden');
+            if (data.attempts_remaining) {
+                warning.textContent = `You have ${data.attempts_remaining} attempts remaining.`;
             }
-        }, 1000);
-    } else if (timerEl && timeLeft <= 0) {
-        timerEl.innerHTML = '<span class="text-red-500">Expired — click Resend Code</span>';
-    }
-}
+            document.getElementById('verify_otp').value = '';
+            document.getElementById('verify_otp').focus();
+            return;
+        }
 
-// Initialize timer on page load
-if (timerEl) {
-    startTimer();
-}
+        if (data.redirect) {
+            window.location.href = data.redirect;
+        }
+    } catch (requestError) {
+        error.textContent = 'Unable to verify the code. Please try again.';
+        error.classList.remove('hidden');
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Confirm';
+    }
+});
 
 function close2faModal() {
     document.getElementById('2faModal').style.display = 'none';
@@ -238,9 +324,8 @@ async function handleResendOtp(event) {
     event.preventDefault();
     const form = document.getElementById('resendOtpForm');
     const status = document.getElementById('otpStatusMessage');
-    const timerEl = document.getElementById('otpTimer');
 
-    if (! form || ! status || ! timerEl) {
+    if (! form || ! status) {
         return;
     }
 
@@ -274,9 +359,6 @@ async function handleResendOtp(event) {
         status.classList.add('text-green-700');
         status.textContent = data.status || 'A new code has been generated and logged.';
         
-        // Reset timer with new time
-        timeLeft = data.time_left || 30;
-        startTimer();
     } catch (error) {
         status.classList.remove('text-green-700');
         status.classList.add('text-red-700');

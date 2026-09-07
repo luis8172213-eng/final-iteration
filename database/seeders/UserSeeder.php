@@ -11,10 +11,10 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email_hash' => hash('sha256', strtolower('frnzvirtucio@gmail.com'))],
+            ['email_hash' => hash('sha256', strtolower('torerusinee@gmail.com'))],
             [
                 'name' => 'Head Admin',
-                'email' => 'frnzvirtucio@gmail.com',
+                'email' => 'torerusinee@gmail.com',
                 'password' => Hash::make('$Myluis99'),
                 'is_admin' => true,
                 'is_super_admin' => true,
@@ -42,4 +42,5 @@ class UserSeeder extends Seeder
         );
     }
 }
+
 
