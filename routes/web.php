@@ -19,6 +19,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ChatbotController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +37,7 @@ Route::get('/', function () {
 use App\Http\Controllers\CalendarController;
 // Static pages and protected views that require authentication.
 Route::middleware('auth')->group(function () {
+    Route::post('/api/chatbot', [ChatbotController::class, 'respond'])->name('chatbot.respond');
     Route::get('/calendar', function () {
         return view('calendar');
     })->name('calendar');
