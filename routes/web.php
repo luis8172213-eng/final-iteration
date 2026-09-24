@@ -38,6 +38,7 @@ use App\Http\Controllers\CalendarController;
 // Static pages and protected views that require authentication.
 Route::middleware('auth')->group(function () {
     Route::post('/api/chatbot', [ChatbotController::class, 'respond'])->name('chatbot.respond');
+    Route::post('/api/chatbot/reset', [ChatbotController::class, 'reset'])->name('chatbot.reset');
     Route::get('/calendar', function () {
         return view('calendar');
     })->name('calendar');
@@ -238,4 +239,3 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('admin.users.destroy');
     });
 });
-

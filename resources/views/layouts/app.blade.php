@@ -89,7 +89,10 @@
                             </div>
                         </div>
                     </div>
-                    <button id="chatbot-close" type="button" class="rounded-lg px-2 py-1 text-xl leading-none text-slate-300 hover:bg-white/10 hover:text-white" style="padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: #cbd5e1; font-size: 22px; line-height: 1; cursor: pointer;" aria-label="Close reservation assistant">&times;</button>
+                    <div class="flex items-center gap-3">
+                        <button id="chatbot-new" type="button" class="text-xs font-semibold text-slate-300 hover:text-white" aria-label="Start a new chat">New chat</button>
+                        <button id="chatbot-close" type="button" class="rounded-lg px-2 py-1 text-xl leading-none text-slate-300 hover:bg-white/10 hover:text-white" style="padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: #cbd5e1; font-size: 22px; line-height: 1; cursor: pointer;" aria-label="Close reservation assistant">&times;</button>
+                    </div>
                 </div>
                 <div id="chatbot-messages" class="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50 p-5 text-sm" style="min-height: 0; flex: 1 1 auto; overflow-y: auto; scrollbar-width: thin;">
                     <div class="flex gap-3">
@@ -97,11 +100,11 @@
                         <p class="w-fit max-w-[90%] rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm" style="width: fit-content; max-width: 90%;">Hi! Ask me about room availability, schedules, or reservations.</p>
                     </div>
                 </div>
-                <form id="chatbot-form" class="border-t border-slate-200 bg-white p-4">
+                <form id="chatbot-form" class="pointer-events-auto border-t border-slate-200 bg-white p-4" style="pointer-events: auto; position: relative; z-index: 10002;">
                     @csrf
                     <div class="flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 p-1.5 focus-within:border-slate-900 focus-within:bg-white">
                         <label for="chatbot-input" class="sr-only">Ask the reservation assistant</label>
-                        <input id="chatbot-input" type="text" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none" placeholder="Ask about availability..." autocomplete="off">
+                        <input id="chatbot-input" type="text" class="pointer-events-auto min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none" style="pointer-events: auto; position: relative; z-index: 10003; cursor: text;" placeholder="Ask about availability..." autocomplete="off">
                         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Send</button>
                     </div>
                     <p class="mt-2 px-1 text-[11px] text-slate-400">Check availability, request a reservation, or view your bookings.</p>
@@ -112,11 +115,43 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const toggle = document.getElementById('chatbot-toggle');
                 const close = document.getElementById('chatbot-close');
+                const newChat = document.getElementById('chatbot-new');
                 const panel = document.getElementById('chatbot-panel');
                 const backdrop = document.getElementById('chatbot-backdrop');
                 const form = document.getElementById('chatbot-form');
                 const input = document.getElementById('chatbot-input');
                 const messages = document.getElementById('chatbot-messages');
+                const csrfToken = form.querySelector('input[name="_token"]').value;
+
+                input.addEventListener('contextmenu', function() {
+                    window.setTimeout(function() {
+                        input.focus();
+                    }, 0);
+                });
+
+                function resetVisibleChat() {
+                    messages.innerHTML = `
+                        <div class="flex gap-3">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-[10px] font-bold text-white">CR</span>
+                            <p class="w-fit max-w-[90%] rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm">Hi! Ask me about room availability, schedules, or reservations.</p>
+                        </div>
+                    `;
+                    input.value = '';
+                }
+
+                function resetServerChat(keepalive = false) {
+                    return fetch('{{ route('chatbot.reset') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({}),
+                        credentials: 'same-origin',
+                        keepalive,
+                    });
+                }
 
                 toggle?.addEventListener('click', function() {
                     const isClosed = panel.classList.contains('invisible');
@@ -129,15 +164,34 @@
                     backdrop.classList.toggle('pointer-events-none', !isClosed);
                     backdrop.classList.toggle('opacity-0', !isClosed);
                     document.getElementById('chatbot-widget').classList.toggle('pointer-events-none', !isClosed);
+                    panel.style.pointerEvents = isClosed ? 'auto' : 'none';
                     if (isClosed) input.focus();
                 });
                 close?.addEventListener('click', function() {
+                    resetServerChat().catch(() => {});
+                    resetVisibleChat();
                     panel.classList.add('invisible', 'pointer-events-none', 'translate-x-full', 'opacity-0');
                     panel.style.transform = 'translateX(100%)';
                     backdrop.classList.add('invisible', 'pointer-events-none', 'opacity-0');
                     document.getElementById('chatbot-widget').classList.add('pointer-events-none');
+                    panel.style.pointerEvents = 'none';
                 });
                 backdrop?.addEventListener('click', function() { close.click(); });
+
+                newChat?.addEventListener('click', async function() {
+                    try {
+                        await resetServerChat();
+                    } catch (error) {
+                        // The visible chat is still reset; the next message will establish fresh state.
+                    }
+
+                    resetVisibleChat();
+                    input.focus();
+                });
+
+                window.addEventListener('pagehide', function() {
+                    resetServerChat(true).catch(() => {});
+                });
 
                 form?.addEventListener('submit', async function(event) {
                     event.preventDefault();
