@@ -36,18 +36,23 @@
 
         <div class="flex items-center gap-3">
             @auth
-                <a href="{{ route('notifications.index') }}" class="relative text-gray-700 hover:text-gray-900">
+                <a id="notificationLink" href="{{ route('notifications.index') }}" class="relative text-gray-700 hover:text-gray-900">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
                     @if(auth()->user()->unreadNotifications->count())
-                        <span class="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-semibold text-white">
+                        <span id="notificationBadge" class="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-semibold text-white">
                             {{ auth()->user()->unreadNotifications->count() }}
                         </span>
                     @endif
                 </a>
                 <a href="/profile" class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-                    <img src="{{ auth()->user()->profile_picture ? asset('storage/' . auth()->user()->profile_picture) : 'https://via.placeholder.com/32x32/cccccc/000000?text=?' }}" alt="Profile Picture" class="w-8 h-8 rounded-full object-cover">
+                    <img
+                        src="{{ auth()->user()->profile_picture ? asset('storage/' . auth()->user()->profile_picture) : asset('images/guest-avatar.svg') }}"
+                        onerror="this.onerror=null;this.src='{{ asset('images/guest-avatar.svg') }}';"
+                        alt="Profile Picture"
+                        class="w-8 h-8 rounded-full object-cover"
+                    >
                     Profile
                 </a>
                 @if(auth()->user()->isAdmin())
@@ -69,6 +74,98 @@
     <main>
         @yield('content')
     </main>
+
+    @auth
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var audioContext = null;
+                var lastCount = null;
+                var lastNotificationId = null;
+                var notificationLink = document.getElementById('notificationLink');
+                var notificationEndpoint = @json(route('notifications.unreadSummary'));
+
+                function unlockNotificationSound() {
+                    var AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextConstructor || audioContext) return;
+
+                    audioContext = new AudioContextConstructor();
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume().catch(function(error) {
+                            console.warn('Notification sound could not be enabled.', error);
+                        });
+                    }
+                }
+
+                function playNotificationSound() {
+                    if (!audioContext || audioContext.state !== 'running') return;
+
+                    var oscillator = audioContext.createOscillator();
+                    var gain = audioContext.createGain();
+                    var now = audioContext.currentTime;
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(880, now);
+                    oscillator.frequency.setValueAtTime(660, now + 0.12);
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+                    oscillator.connect(gain);
+                    gain.connect(audioContext.destination);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.3);
+                }
+
+                document.addEventListener('pointerdown', unlockNotificationSound, { once: true });
+                document.addEventListener('keydown', unlockNotificationSound, { once: true });
+
+                function updateNotificationStatus() {
+                    if (document.hidden) return;
+
+                    fetch(notificationEndpoint, {
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'same-origin'
+                    })
+                        .then(function(response) {
+                            if (!response.ok) {
+                                throw new Error('Notification status request failed: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(function(summary) {
+                            var count = Number(summary.count) || 0;
+                            var notificationId = summary.latest_id || null;
+
+                            if (lastCount !== null
+                                && (count > lastCount
+                                    || (count === lastCount && count > 0 && notificationId !== lastNotificationId))) {
+                                playNotificationSound();
+                            }
+
+                            lastCount = count;
+                            lastNotificationId = notificationId;
+
+                            var badge = document.getElementById('notificationBadge');
+                            if (count > 0) {
+                                if (!badge && notificationLink) {
+                                    badge = document.createElement('span');
+                                    badge.id = 'notificationBadge';
+                                    badge.className = 'absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-semibold text-white';
+                                    notificationLink.appendChild(badge);
+                                }
+                                if (badge) badge.textContent = String(count);
+                            } else if (badge) {
+                                badge.remove();
+                            }
+                        })
+                        .catch(function(error) {
+                            console.error('Could not check for new notifications.', error);
+                        });
+                }
+
+                updateNotificationStatus();
+                window.setInterval(updateNotificationStatus, 15000);
+            });
+        </script>
+    @endauth
 
     @if(auth()->check() && !request()->routeIs('profile.show', 'security.compromised', 'login', 'register', 'password.*', '2fa.*', 'admin.*'))
         <div id="chatbot-widget" class="fixed inset-0 z-50 pointer-events-none" style="position: fixed; inset: 0; z-index: 9999; pointer-events: none;">

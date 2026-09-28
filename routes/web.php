@@ -210,6 +210,7 @@ Route::middleware('auth')->group(function () {
 
     // Profile settings
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
+    Route::post('/profile/picture', [AuthController::class, 'uploadProfilePicture'])->name('profile.picture.upload');
     Route::post('/profile/password/verify', [AuthController::class, 'verifyCurrentPassword'])->name('profile.password.verify');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
     Route::view('/security/account-compromised', 'security.compromised')->name('security.compromised');
@@ -217,6 +218,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/2fa/confirm', [AuthController::class, 'confirmAuthenticator'])->name('profile.2fa.confirm');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/api/notifications/unread-summary', [NotificationController::class, 'unreadSummary'])
+        ->name('notifications.unreadSummary');
     Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markRead');
     Route::post('/notifications/delete-selected', [NotificationController::class, 'destroySelected'])->name('notifications.destroySelected');
 
@@ -232,6 +235,8 @@ Route::middleware('auth')->group(function () {
     // Admin portal routes (hidden / secret access only)
     Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+        Route::get('/facilities/create', [AdminController::class, 'createFacility'])->name('admin.facilities.create');
+        Route::post('/facilities', [AdminController::class, 'storeFacility'])->name('admin.facilities.store');
         Route::post('/reservations/{reservation}/approve', [AdminController::class, 'approve'])->name('admin.reservations.approve');
         Route::post('/reservations/{reservation}/reject', [AdminController::class, 'reject'])->name('admin.reservations.reject');
         Route::delete('/reservations/{reservation}', [AdminController::class, 'destroyReservation'])->name('admin.reservations.destroy');

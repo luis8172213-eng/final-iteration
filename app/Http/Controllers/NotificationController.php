@@ -8,6 +8,16 @@ use Illuminate\Support\Facades\Notification;
 
 class NotificationController extends Controller
 {
+    public function unreadSummary()
+    {
+        $unreadNotifications = auth()->user()->unreadNotifications();
+
+        return response()->json([
+            'count' => (clone $unreadNotifications)->count(),
+            'latest_id' => $unreadNotifications->latest('created_at')->value('id'),
+        ]);
+    }
+
     public function index()
     {
         // Get the logged-in user's notifications, showing the newest first, with 15 per page

@@ -24,12 +24,17 @@
             <div class="gap-4 grid-cols-1" style="display:grid;grid-template-columns:240px minmax(680px,1fr);gap:1rem;overflow-x:auto;max-width:1040px;margin:0 auto;">
                 <div class="space-y-6">
                     <aside class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
-                        <div class="rounded-3xl border border-slate-200 bg-slate-900 p-5 text-white shadow-sm">
-                            <div class="flex items-center justify-between text-sm text-slate-300 mb-4">
-                                <span id="miniCalendarHeader">August 2023</span>
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm">
+                            <div class="mb-4 flex items-center justify-between gap-2 text-sm text-slate-600">
+                                <div class="flex min-w-0 items-center gap-1">
+                                    <label class="sr-only" for="miniCalendarMonth">Calendar month</label>
+                                    <select id="miniCalendarMonth" class="min-w-0 rounded-lg border-0 bg-white py-1 pl-1 pr-5 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-slate-400"></select>
+                                    <label class="sr-only" for="miniCalendarYear">Calendar year</label>
+                                    <select id="miniCalendarYear" class="rounded-lg border-0 bg-white py-1 pl-1 pr-5 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-slate-400"></select>
+                                </div>
                                 <span id="miniCalendarView">Week</span>
                             </div>
-                            <div class="grid grid-cols-7 gap-2 text-center text-[11px] uppercase text-slate-400 mb-3">
+                            <div class="grid grid-cols-7 gap-2 text-center text-[11px] uppercase text-slate-500 mb-3">
                                 <span>Su</span>
                                 <span>Mo</span>
                                 <span>Tu</span>
@@ -38,7 +43,7 @@
                                 <span>Fr</span>
                                 <span>Sa</span>
                             </div>
-                            <div id="miniCalendarDays" class="grid grid-cols-7 gap-2 text-sm text-slate-100">
+                            <div id="miniCalendarDays" class="grid grid-cols-7 gap-2 text-sm text-slate-700">
                                 <!-- Filled by JavaScript -->
                             </div>
                         </div>
@@ -65,6 +70,12 @@
                             <p class="text-sm text-slate-500">Browse existing reservations and see availability at a glance.</p>
                         </div>
                         <div class="flex flex-nowrap items-center gap-3 overflow-x-auto">
+                            <div class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white px-2">
+                                <label class="sr-only" for="mainCalendarMonth">Calendar month</label>
+                                <select id="mainCalendarMonth" class="min-w-0 rounded-lg border-0 bg-white py-2 pl-1 pr-5 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-slate-400"></select>
+                                <label class="sr-only" for="mainCalendarYear">Calendar year</label>
+                                <select id="mainCalendarYear" class="rounded-lg border-0 bg-white py-2 pl-1 pr-5 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-slate-400"></select>
+                            </div>
                             <button data-view="dayGridMonth" class="px-4 py-2 rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200">Month</button>
                             <button data-view="timeGridWeek" class="px-4 py-2 rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200">Week</button>
                             <button data-view="listWeek" class="px-4 py-2 rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200">List</button>
@@ -124,6 +135,29 @@
 
 @push('styles')
 <link href="{{ asset('fullcalendar/main.css') }}" rel="stylesheet">
+<style>
+    #pendingReservationsList {
+        max-height: 18rem;
+        overflow-y: scroll;
+        padding-right: 0.5rem;
+        scrollbar-color: #94a3b8 #f1f5f9;
+        scrollbar-width: thin;
+    }
+
+    #pendingReservationsList::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #pendingReservationsList::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 9999px;
+    }
+
+    #pendingReservationsList::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 9999px;
+    }
+</style>
 @endpush
 
 @push('scripts')
@@ -150,6 +184,7 @@
         var currentSearch = '';
         var cachedEvents = [];
             var suggestionsEl = document.getElementById('searchSuggestions');
+        var minimumCalendarYear = new Date().getFullYear() - 1;
 
             function closeEventInfoModal() {
                 if (eventInfoModal) {
@@ -252,6 +287,14 @@
             navLinks: true,
             selectable: false,
             editable: false,
+            datesSet: function(info) {
+                if (calendar.getDate().getFullYear() < minimumCalendarYear) {
+                    calendar.gotoDate(new Date(minimumCalendarYear, 0, 1));
+                    return;
+                }
+
+                updateMiniCalendar();
+            },
             events: function(info, successCallback, failureCallback) {
                 fetch('/api/calendar/events', { credentials: 'include' })
                     .then(function(response) {
@@ -350,16 +393,42 @@
         // Mini calendar update function
         function updateMiniCalendar() {
             var currentDate = calendar.getDate();
-            var miniHeader = document.getElementById('miniCalendarHeader');
+            var miniMonth = document.getElementById('miniCalendarMonth');
+            var miniYear = document.getElementById('miniCalendarYear');
+            var mainMonth = document.getElementById('mainCalendarMonth');
+            var mainYear = document.getElementById('mainCalendarYear');
             var miniView = document.getElementById('miniCalendarView');
             var miniDays = document.getElementById('miniCalendarDays');
 
-            if (!miniHeader || !miniDays) return;
+            if (!miniMonth || !miniYear || !mainMonth || !mainYear || !miniDays) return;
 
-            // Update header with current month/year
-            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                            'July', 'August', 'September', 'October', 'November', 'December'];
-            miniHeader.textContent = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
+            var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            [miniMonth, mainMonth].forEach(function(monthSelect) {
+                if (monthSelect.options.length > 0) return;
+                monthNames.forEach(function(monthName, monthIndex) {
+                    var option = document.createElement('option');
+                    option.value = String(monthIndex);
+                    option.textContent = monthName;
+                    monthSelect.appendChild(option);
+                });
+            });
+
+            var selectedYear = currentDate.getFullYear();
+            [miniYear, mainYear].forEach(function(yearSelect) {
+                if (yearSelect.options.length > 0) return;
+                var lastYear = Math.max(new Date().getFullYear() + 20, selectedYear);
+                for (var year = minimumCalendarYear; year <= lastYear; year++) {
+                    var yearOption = document.createElement('option');
+                    yearOption.value = String(year);
+                    yearOption.textContent = String(year);
+                    yearSelect.appendChild(yearOption);
+                }
+            });
+            miniMonth.value = String(currentDate.getMonth());
+            miniYear.value = String(selectedYear);
+            mainMonth.value = String(currentDate.getMonth());
+            mainYear.value = String(selectedYear);
 
             // Get first day of month and number of days
             var firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -381,7 +450,7 @@
 
                 // Highlight today
                 if (dayDate.toDateString() === today.toDateString()) {
-                    span.className = 'rounded-2xl bg-slate-700 py-2';
+                    span.className = 'rounded-2xl bg-slate-200 py-2 text-slate-900';
                 }
 
                 // Dim days outside current month
@@ -403,8 +472,32 @@
 
         updateMiniCalendar();
 
-        // Update mini calendar when main calendar changes
-        calendar.on('datesSet', updateMiniCalendar);
+        var miniMonth = document.getElementById('miniCalendarMonth');
+        var miniYear = document.getElementById('miniCalendarYear');
+        var mainMonth = document.getElementById('mainCalendarMonth');
+        var mainYear = document.getElementById('mainCalendarYear');
+        function navigateCalendarFromSelectors(monthSelect, yearSelect) {
+            var month = Number(monthSelect.value);
+            var year = Number(yearSelect.value);
+
+            if (Number.isInteger(month) && month >= 0 && month <= 11
+                && Number.isInteger(year) && year >= minimumCalendarYear) {
+                calendar.gotoDate(new Date(year, month, 1));
+            }
+        }
+
+        function navigateFromMiniCalendar() {
+            navigateCalendarFromSelectors(miniMonth, miniYear);
+        }
+
+        function navigateFromMainCalendar() {
+            navigateCalendarFromSelectors(mainMonth, mainYear);
+        }
+
+        miniMonth.addEventListener('change', navigateFromMiniCalendar);
+        miniYear.addEventListener('change', navigateFromMiniCalendar);
+        mainMonth.addEventListener('change', navigateFromMainCalendar);
+        mainYear.addEventListener('change', navigateFromMainCalendar);
 
         if (searchInput) {
             searchInput.addEventListener('input', function() {
@@ -471,4 +564,3 @@
     });
 </script>
 @endpush
-

@@ -2,6 +2,39 @@
 
 @section('title', 'Profile Settings - Campus Reserve')
 
+@push('styles')
+<style>
+    .profile-picture-input::file-selector-button {
+        margin-right: 0.75rem;
+        border: 0;
+        border-radius: 9999px;
+        background: #0f172a;
+        padding: 0.5rem 1rem;
+        color: #fff;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+    }
+
+    .profile-picture-input::file-selector-button:hover {
+        background: #334155;
+    }
+
+    .profile-picture-input::-webkit-file-upload-button {
+        margin-right: 0.75rem;
+        border: 0;
+        border-radius: 9999px;
+        background: #0f172a;
+        padding: 0.5rem 1rem;
+        color: #fff;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+</style>
+@endpush
+
 @section('content')
 <!-- Profile settings page for updating user account details, profile picture, and phone information. -->
 <main class="min-h-[calc(100vh-73px)] bg-slate-50 py-10 px-4 md:px-8 xl:px-16">
@@ -58,16 +91,18 @@
                             <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                                     <div class="relative h-24 w-24 overflow-hidden rounded-3xl border border-gray-200 bg-gray-100">
-                                        @if(auth()->user()->profile_picture)
-                                            <img src="{{ asset('storage/' . auth()->user()->profile_picture) }}" alt="Profile picture" class="h-full w-full object-cover">
-                                        @else
-                                            <div class="flex h-full w-full items-center justify-center text-gray-400">No photo</div>
-                                        @endif
+                                        <img
+                                            src="{{ auth()->user()->profile_picture ? asset('storage/' . auth()->user()->profile_picture) : asset('images/guest-avatar.svg') }}"
+                                            onerror="this.onerror=null;this.src='{{ asset('images/guest-avatar.svg') }}';"
+                                            alt="Profile picture"
+                                            class="h-full w-full object-cover"
+                                        >
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <label class="block text-sm font-semibold text-gray-900">Profile picture</label>
                                         <p class="mt-1 text-sm text-gray-500">Square image works best.</p>
-                                        <input type="file" name="profile_picture" accept="image/png,image/jpeg,image/webp" class="mt-3 block w-full text-sm text-gray-700" />
+                                        <input type="file" name="profile_picture" accept="image/png,image/jpeg,image/webp" class="profile-picture-input mt-3 block w-full text-sm text-gray-700" />
+                                        <p id="profile-picture-upload-status" class="mt-2 text-sm text-gray-600" role="status" aria-live="polite"></p>
                                         @error('profile_picture')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                                     </div>
                                 </div>
@@ -274,8 +309,45 @@
         const setupCurrentPassword = document.getElementById('setup-current-password');
         const disableTwoFactorModal = document.getElementById('disable-2fa-modal');
         const profileSettingsForm = document.getElementById('profile-settings-form');
+        const profilePictureInput = profileSettingsForm?.querySelector('input[name="profile_picture"]');
+        const profilePictureUploadStatus = document.getElementById('profile-picture-upload-status');
         const disableCurrentPassword = document.getElementById('disable-current-password');
         const disableAuthenticatorCode = document.getElementById('disable-authenticator-code');
+
+        profilePictureInput?.addEventListener('change', async function() {
+            const picture = this.files?.[0];
+            if (!picture) return;
+
+            this.disabled = true;
+            profilePictureUploadStatus.textContent = 'Uploading profile picture...';
+            profilePictureUploadStatus.className = 'mt-2 text-sm text-gray-600';
+
+            const formData = new FormData();
+            formData.append('profile_picture', picture);
+            formData.append('_token', profileSettingsForm.querySelector('input[name="_token"]').value);
+
+            try {
+                const response = await fetch('{{ route('profile.picture.upload') }}', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData,
+                    credentials: 'same-origin',
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const validationMessage = data.errors?.profile_picture?.[0];
+                    throw new Error(validationMessage || data.message || 'Unable to upload profile picture.');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                profilePictureUploadStatus.textContent = error.message;
+                profilePictureUploadStatus.className = 'mt-2 text-sm text-red-600';
+                this.disabled = false;
+                this.value = '';
+            }
+        });
         const disableModalError = document.getElementById('disable-2fa-modal-error');
         const passwordTwoFactorModal = document.getElementById('password-2fa-modal');
         const passwordAuthenticatorCode = document.getElementById('password-authenticator-code');

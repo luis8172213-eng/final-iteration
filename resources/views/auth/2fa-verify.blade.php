@@ -19,11 +19,22 @@
             </h1>
             
             <div class="text-center mb-8">
-                <p class="text-gray-600 mb-2">We sent a 6-digit code to your phone.</p>
-                @if($timeLeft > 0)
-                    <p class="text-sm text-gray-500">Time remaining: <span id="timer">{{ $timeLeft }}s</span></p>
+                @if($method === 'authenticator')
+                    <p class="text-gray-600 mb-2">
+                        @if($provider === 'google')
+                            Google sign-in succeeded. Enter the current code from your Campus Reserve authenticator app.
+                        @else
+                            Enter the current code from your authenticator app.
+                        @endif
+                    </p>
                 @else
-                    <p class="text-red-500">Code expired. Please login again.</p>
+                    <p class="text-gray-600 mb-2">
+                        @if($provider === 'google')
+                            Google sign-in succeeded. We sent a 6-digit verification code to your email.
+                        @else
+                            We sent a 6-digit verification code to your email.
+                        @endif
+                    </p>
                 @endif
             </div>
             
@@ -32,6 +43,10 @@
                     {{ session('status') }}
                 </div>
             @endif
+
+            <p class="mb-6 text-center text-sm font-medium text-amber-700">
+                You have {{ $attemptsRemaining }} attempts remaining.
+            </p>
             
             <form method="POST" action="{{ route('2fa.verify') }}" class="space-y-6">
                 @csrf
@@ -73,15 +88,17 @@
             </form>
             
             <div class="mt-6 text-center">
-                <form method="POST" action="{{ route('2fa.resend') }}" class="inline">
-                    @csrf
-                    <button type="submit" class="text-sm text-blue-600 hover:underline">
-                        Resend Code
-                    </button>
-                </form>
-                <p class="text-xs text-gray-500 mt-2">
-                    Didn't receive? Check spam folder.
-                </p>
+                @if($method !== 'authenticator')
+                    <form method="POST" action="{{ route('2fa.resend') }}" class="inline">
+                        @csrf
+                        <button type="submit" class="text-sm text-blue-600 hover:underline">
+                            Resend Code
+                        </button>
+                    </form>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Didn't receive it? Check your spam folder.
+                    </p>
+                @endif
                 <p class="mt-4">
                     <a href="/login" class="text-sm text-red-600 hover:underline">Back to Login</a>
                 </p>
@@ -94,21 +111,4 @@
     </div>
 </main>
 
-<script>
-    let timeLeft = {{ $timeLeft ?? 0 }};
-    const timerEl = document.getElementById('timer');
-    
-    const interval = setInterval(() => {
-        timeLeft--;
-        if (timerEl && timeLeft > 0) {
-            timerEl.textContent = timeLeft + 's';
-        } else {
-            clearInterval(interval);
-            if (timerEl) {
-                timerEl.innerHTML = '<a href="/login" class="text-red-500">Expired - Login Again</a>';
-            }
-        }
-    }, 1000);
-</script>
 @endsection
-

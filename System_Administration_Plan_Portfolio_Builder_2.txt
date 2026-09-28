@@ -1,0 +1,335 @@
+SYSTEM ADMINISTRATION PLAN
+Portfolio Builders 1-4
+
+1. SYSTEM ADMINISTRATION OVERVIEW
+
+Campus Reserve is a web-based reservation and facility management platform designed to help an educational institution organize room bookings, manage facility usage, and support efficient scheduling across campus departments. The system enables users to submit reservation requests, view availability, track booking status, and receive updates regarding request approval or rejection. It is intended to streamline facility allocation while maintaining a user-friendly and organized scheduling process.
+
+As a Capstone project, Campus Reserve is not only a software application but also a system that requires ongoing administrative control. This plan defines the operational and governance responsibilities necessary to ensure the system remains secure, available, reliable, and easy to manage after deployment. It addresses the administrative actions required to support the platform throughout its lifecycle, including user management, system monitoring, backup preparation, security oversight, and documentation.
+
+The system will be governed by the Capstone project team, with responsibilities divided among the project owner, the assigned system administrator, and the faculty adviser or technical supervisor. These stakeholders will work together to maintain the platform, monitor its performance, enforce access rules, and ensure that administrative decisions are made in a structured and accountable manner. By clearly defining responsibilities, the project reduces the risk of confusion, unauthorized access, inconsistent maintenance, and delayed issue resolution.
+
+2. ORGANIZATIONAL AND ADMINISTRATIVE PLANNING
+
+The organizational structure for Campus Reserve is designed to support accountability, security, and continuity of service. The project team serves as the operational unit responsible for system administration and maintenance. The system administrator is responsible for managing user access, maintaining the application environment, reviewing logs, enforcing security controls, and supporting the day-to-day operation of the platform.
+
+The project owner or faculty adviser provides strategic oversight and final approval for major system changes, policy decisions, and operational direction. This governance structure ensures that technical activities remain aligned with project goals while allowing operational responsibilities to be delegated to the appropriate personnel. Because the system supports campus activities and handles schedule-sensitive information, responsibility must be clearly assigned to avoid uncertainty over who can approve changes, manage accounts, or respond to incidents.
+
+Administrative planning is essential to ensure that system operations are not left to ad hoc decisions. The project includes formal procedures for access control, user account maintenance, password security, incident reporting, service continuity, and documentation. These procedures help establish consistent processes for reviewing system activity, handling account issues, and reducing the likelihood of operational failure.
+
+For this project, administrative responsibilities will be divided into the following functional areas:
+- User account management and access authorization
+- System configuration and monitoring
+- Security maintenance and policy compliance
+- Data backup, restoration readiness, and recovery planning
+- Issue tracking, resolution, and escalation
+- Documentation and ongoing knowledge management
+
+This approach ensures that Campus Reserve is not only developed as a functional application but also managed as a controlled and secure system. The administrative plan supports continuity, accountability, and operational readiness for both routine use and unexpected technical issues.
+
+3. ORGANIZATIONAL IT POLICIES
+
+3.1 Policy Name: User Access Control Policy
+Purpose: To ensure that only authorized individuals are allowed to access the Campus Reserve system and its administrative functions.
+Scope: This policy applies to all users, including students, faculty, staff, administrators, and project team members who interact with the system.
+Policy Statement: All users must authenticate using approved credentials before accessing the system. Access rights must be assigned according to user roles and operational need. The system administrator must review access requests, manage account permissions, and remove or restrict access when it is no longer necessary.
+Responsible Stakeholders: System Administrator, Project Owner, Faculty Adviser.
+
+3.2 Policy Name: Password and Authentication Policy
+Purpose: To reduce the risk of unauthorized access by enforcing secure authentication and strong password practices.
+Scope: This policy applies to all user accounts and administrative accounts associated with Campus Reserve.
+Policy Statement: Users must maintain strong passwords, protect their credentials, and comply with account security requirements. Multi-factor authentication, password verification, and secure account recovery procedures should be implemented wherever applicable. Weak, shared, or compromised credentials must be reset immediately and reported to the system administrator.
+Responsible Stakeholders: System Administrator, Users, Project Team.
+
+3.3 Policy Name: Data Privacy and Confidentiality Policy
+Purpose: To protect personal information, reservation records, and operational data stored in the system.
+Scope: This policy applies to all information captured, processed, and stored within Campus Reserve.
+Policy Statement: System data must be collected and used only for authorized purposes. Sensitive information should be restricted to individuals with legitimate access requirements and must not be disclosed to unauthorized users. The system administrator is responsible for enforcing confidentiality and ensuring that all data handling follows security best practices.
+Responsible Stakeholders: System Administrator, Project Owner, Faculty Adviser, Users.
+
+3.4 Policy Name: System Change Management Policy
+Purpose: To ensure that changes to the system are planned, evaluated, and controlled before implementation.
+Scope: This policy applies to software updates, configuration changes, feature additions, and maintenance activities affecting the application or its environment.
+Policy Statement: All major changes must be documented, tested, and approved before deployment. Unapproved or undocumented alterations may create operational risk, disrupt facility booking services, or compromise system reliability. Proper change control helps maintain stability and ensures accountability for updates.
+Responsible Stakeholders: System Administrator, Project Owner, Faculty Adviser, Development Team.
+
+3.5 Policy Name: Incident Reporting and Response Policy
+Purpose: To ensure that system issues, security concerns, and service disruptions are reported and managed in a consistent and timely manner.
+Scope: This policy applies to login issues, account problems, system errors, reservation failures, data concerns, and any other operational incidents affecting the platform.
+Policy Statement: All incidents must be documented and reported to the responsible administrator or project lead. Serious issues must be escalated quickly, and corrective actions must be recorded for future review and improvement. A structured response process supports faster resolution and helps reduce repeat issues.
+Responsible Stakeholders: System Administrator, Project Owner, Faculty Adviser, Users.
+
+4. ADMINISTRATIVE POLICIES
+
+4.1 Policy Name: Account Creation and Maintenance Policy
+Purpose: To ensure that user accounts are created, updated, and removed in a secure and consistent manner.
+Responsible Personnel: System Administrator, Project Owner.
+Administrative Guidelines: The administrator must verify the identity of each new user before creating an account. Each account should be assigned the correct role and appropriate access permissions. When a user changes role, status, or eligibility, the administrator must update or disable the account accordingly. Account changes must be documented and reviewed periodically to maintain accountability and support auditing.
+
+4.2 Policy Name: Backup and Recovery Policy
+Purpose: To protect system data and maintain continuity in the event of data loss, failure, or accidental deletion.
+Responsible Personnel: System Administrator, Project Owner.
+Administrative Guidelines: Backup procedures must be performed according to an established schedule and should cover critical reservation records and application data. Backup files must be stored securely and verified periodically to ensure they are complete and recoverable. The administrator should record backup dates, storage locations, and restoration test outcomes to support operational continuity.
+
+4.3 Policy Name: Security Monitoring and Review Policy
+Purpose: To maintain system integrity by monitoring activity and identifying risks before they become serious issues.
+Responsible Personnel: System Administrator, Faculty Adviser.
+Administrative Guidelines: The administrator should review login activity, system logs, failed authentication attempts, and access alerts on a regular basis. Any suspicious or unauthorized behavior must be investigated promptly, documented, and escalated when necessary. Periodic security reviews should also be performed to identify weaknesses and recommend corrective actions.
+
+5. STANDARD OPERATING PROCEDURE (SOP)
+
+SOP Title: Password Reset and Account Security Procedure
+
+Purpose:
+The purpose of this SOP is to provide a consistent and secure method for handling password reset requests and account security concerns in Campus Reserve. This procedure helps maintain user trust, reduce unauthorized access, and support efficient issue resolution.
+
+Scope:
+This SOP applies to all users who require password recovery, password changes, or account security assistance, including both general users and administrative personnel.
+
+Responsible Personnel:
+- System Administrator
+- Project Owner or Faculty Adviser (when escalation is required)
+
+Required Resources:
+- User account management interface
+- Password reset or verification workflow
+- Authentication and security validation tools
+- Access log or audit documentation
+- Incident reporting form or log sheet
+
+Step-by-Step Procedure:
+1. Receive the user’s request for password reset or account security assistance through the approved support or application process.
+2. Verify the identity of the requester using the available authentication checks or security verification steps.
+3. Confirm whether the issue is related to a forgotten password, password change request, or suspicious account activity.
+4. If the request is valid, issue the password reset or account recovery process according to the system’s approved procedure.
+5. Require the user to create a strong password that meets the system’s security requirements.
+6. If the account has signs of compromise or unauthorized activity, immediately review the access logs and restrict suspicious behavior where necessary.
+7. Notify the user of the status of the reset or security review and provide any additional security instructions required.
+8. Record the request, verification steps, actions taken, and resolution outcome in the system log or administrative documentation.
+9. Escalate unusual or high-risk incidents to the project owner or faculty adviser for further review.
+
+Expected Output:
+A secure and verified account recovery or password reset process that restores user access safely while documenting the incident and protecting the system from unauthorized activity.
+
+6. DOCUMENTATION STANDARDS
+
+The Campus Reserve system requires clear and organized documentation to support administration, security, maintenance, and governance. Documentation should be maintained consistently so that system administrators, project stakeholders, and support personnel can reference the correct procedures, policies, and records when performing operational tasks.
+
+Documents to be maintained include:
+- System Administration Plan
+- User account register and access logs
+- Password reset and account recovery records
+- Backup and recovery logs
+- Incident reports and resolution records
+- Configuration and version history
+- Security review records and access approval documentation
+- Maintenance and troubleshooting logs
+
+Purpose of each document:
+- The System Administration Plan establishes the overall governance framework for the system.
+- User account records track user access, role assignment, and authorized permissions.
+- Password recovery records document security-related requests and actions taken.
+- Backup records support data protection and disaster recovery readiness.
+- Incident logs record system problems, corrective actions, and lessons learned.
+- Configuration records help maintain traceability and support future troubleshooting.
+
+Responsible personnel:
+- The System Administrator is responsible for maintaining technical and security documentation.
+- The Project Owner or Faculty Adviser reviews major updates and approves policy-related changes.
+- Team members may contribute documentation when their work affects access, configuration, or system operations.
+
+Update frequency:
+Documentation should be reviewed and updated regularly, especially after changes to user access, security settings, system configurations, backups, or incident responses. Routine updates should be made at least once per semester or whenever significant system changes occur. This keeps the administration plan current, traceable, and useful for ongoing operations.
+
+7. USER AND ACCESS ADMINISTRATION
+
+7.1 USER ACCOUNT LIFECYCLE
+
+Campus Reserve manages accounts through a controlled lifecycle. The objective is to give each person only the access required for their responsibilities and to remove access promptly when that need ends.
+
+Account request:
+- A student, faculty member, or staff member requests an account through the registration page or an approved support request.
+- The requester provides a name, valid email address, password, and any required profile information.
+- Administrative accounts are not self-assigned. A request for administrator access must include a business or project reason and be approved by the Project Owner or Faculty Adviser.
+
+Approval:
+- The System Administrator verifies the requester’s identity and confirms that the account is needed.
+- Regular user accounts may be created through the standard registration process.
+- Administrator and super administrator access requires documented approval and must follow least privilege and separation of duties.
+- Duplicate, suspicious, or incomplete requests are rejected and recorded for review.
+
+Creation and activation:
+- The system creates the account with the regular user role by default.
+- The account receives access only to authenticated user features, including the reservation dashboard, facility calendar, reservation submission, profile settings, notifications, and the user’s own saved credentials.
+- Passwords are stored as one-way hashes. Email and phone data are protected using the application’s encryption controls.
+- The user is informed of the account status and is encouraged to enable two-factor authentication.
+
+Active management:
+- The System Administrator maintains the account register, reviews administrative accounts, and checks authentication and audit activity.
+- Users must keep contact information current, protect their credentials, and report suspected compromise.
+- Accounts and permissions should be reviewed at least once per semester and after major project or organizational changes.
+
+Modification:
+- Changes to a user’s name, email, phone number, password, or two-factor authentication settings must be made through the authenticated profile or approved administrative process.
+- A role change requires approval and documentation. When an administrator no longer needs elevated access, the role must be reduced to regular user.
+- Password changes require the current password; when configured, an authenticator code is also required.
+
+Suspension:
+- An account may be suspended or access restricted when there is suspected compromise, repeated failed verification, policy violation, or an unresolved security incident.
+- The System Administrator records the reason, date, evidence, and approving person. The user is notified when notification would not increase security risk.
+- Administrative access may be suspended immediately while the incident is investigated and escalated to the Project Owner or Faculty Adviser.
+
+Deactivation or deletion:
+- Access must be deactivated when a user leaves the project, loses eligibility, or no longer requires the service.
+- The administrator disables or deletes the account according to the approved retention requirement. Active sessions, remembered devices, and elevated roles must be revoked.
+- Reservation and audit records needed for operational or academic accountability should be retained without preserving unnecessary personal information.
+
+7.2 ROLE-BASED ACCESS CONTROL (RBAC)
+
+Campus Reserve uses role-based access control. Permissions are assigned to roles rather than granted informally to individual users. The super administrator role is reserved for the project owner or designated head administrator.
+
+Role-Permission Matrix:
+
+| Role | Primary responsibilities | Accessible modules and features | Restricted modules and features |
+|---|---|---|---|
+| Guest | Review public information before signing in | Home, About, Contact, registration, login, password-reset request | Reservations, personal data, notifications, credentials, calendar actions, administrator portal |
+| User | Submit and manage personal facility reservations | Reserve dashboard, active facilities, personal calendar, reservation creation and editing, own reservation deletion, notifications, profile, password reset, two-factor setup, own saved credentials | Other users’ reservations, approval decisions, user-role management, user deletion, audit administration, system configuration |
+| Administrator | Review facility requests and operate the reservation system | All regular user functions; administrator login; dashboard; pending reservation review; approve/reject reservations; delete reservations; audit-log review | Changing administrator roles, deleting user accounts, changing the super administrator, unrestricted system configuration |
+| Super Administrator | Manage privileged access and oversee administration | All administrator functions; promote or demote non-super users; delete non-super user accounts; approve privileged access; incident and policy oversight | Cannot change or delete the super administrator account through ordinary user-management actions |
+| System Administrator / Project Team | Maintain application, database, deployment, and security controls | Approved technical administration, logs, backups, configuration, maintenance, and documented support procedures | Must not use technical access to alter reservations or personal data without an approved operational reason |
+
+The System Administrator must review role assignments after staff or project changes. Privileged accounts must use two-factor authentication where available, must not be shared, and must be used only for authorized administrative work.
+
+7.3 PASSWORD AND AUTHENTICATION POLICY
+
+Minimum password standard:
+- Production accounts should use a minimum of 12 characters and should include uppercase and lowercase letters, a number, and a special character.
+- The current prototype validates passwords from 5 to 30 characters with those complexity categories. Before production deployment, the minimum must be raised to 12 characters and the validation message and tests must be updated.
+- Passwords must not contain easily guessed personal information, be reused across systems, or be shared with another person.
+- Passwords are stored using the framework’s password hashing mechanism and must never be stored in plain text.
+
+Password reset procedure:
+1. The user submits the password-reset request using the registered email address.
+2. The system returns a non-disclosing response so that an attacker cannot determine whether an email is registered.
+3. A single-use reset link is sent to the registered address and expires after 60 minutes.
+4. The user creates a new password that meets the password standard. The reset token is hashed in storage and deleted after successful use.
+5. A suspected compromise must be reported to the System Administrator, who reviews relevant logs, restricts access where necessary, and records the incident.
+
+Account lockout and rate limiting:
+- Login, registration, password-reset, and two-factor verification endpoints are rate-limited to reduce password guessing and code abuse.
+- The current application applies request throttles, including 10 login attempts per minute, 5 password-reset or registration attempts per minute, 5 two-factor verification attempts per minute, and 3 two-factor resends per minute.
+- Repeated failures or suspicious activity must trigger administrative review. For production, the administrator should add a temporary account lockout or progressive delay tied to the account and record the event in security logs.
+
+Multi-factor authentication:
+- Users may configure authenticator-based two-factor authentication through their profile.
+- Administrative accounts should be required to use two-factor authentication. The application supports one-time codes and a separate administrator verification flow.
+- Recovery and device-remembering options must be protected, limited in duration, and revoked when compromise is suspected.
+
+User responsibilities:
+- Keep passwords and one-time codes confidential.
+- Use only personal devices or trusted networks when possible.
+- Log out after using shared equipment.
+- Report phishing, unexpected reset messages, lost devices, or suspected compromise immediately.
+- Never attempt to bypass role restrictions or use another person’s account.
+
+7.4 USER PROVISIONING AND DEPROVISIONING PROCESS
+
+The following workflow applies to regular and privileged accounts:
+
+1. Request: The user or authorized project representative submits an account request with identity, purpose, and requested role.
+2. Verify and approve: The System Administrator verifies the request. The Project Owner or Faculty Adviser approves administrator or super administrator access.
+3. Create: The account is created with the least-privileged role, a secure password, and required profile data. No user receives administrative flags by default.
+4. Activate: The user signs in, confirms access, and is instructed to configure two-factor authentication and protect their credentials.
+5. Modify: A role, profile, or permission change is submitted, approved, applied, and recorded. The administrator confirms that old permissions are removed.
+6. Suspend: If compromise, misuse, or loss of eligibility is reported, the administrator restricts access, revokes remembered devices and active sessions where available, preserves relevant evidence, and escalates the incident.
+7. Remove: When access is no longer required, the administrator disables or deletes the account according to retention requirements, removes elevated privileges, and records the completion date and approving authority.
+8. Review: The System Administrator reviews the account register and privileged roles at least once per semester and after every major personnel or project change.
+
+Required records include the request, approval, assigned role, date created, modifications, suspension or removal reason, administrator responsible, and final disposition. This workflow creates an auditable chain from the initial request through account removal.
+
+8. SYSTEM CONFIGURATION MANAGEMENT
+
+8.1 CONFIGURATION MANAGEMENT POLICY
+
+Configuration management ensures that Campus Reserve can be reproduced, reviewed, maintained, and recovered by a qualified administrator even when the original developer is unavailable. A configuration item is any application, infrastructure, database, security, or access setting that affects how the system operates.
+
+The following configuration items must be controlled:
+- Application settings such as APP_ENV, APP_URL, APP_DEBUG, locale, timezone, encryption key, session lifetime, cache, queue, mail, and filesystem drivers.
+- Database settings such as the selected connection, database path or host, credentials, character set, migrations, indexes, and backup location.
+- Application code and dependencies, including PHP and Laravel versions, Composer packages, Node.js packages, Vite, Tailwind CSS, and FullCalendar.
+- Web-server and runtime settings, including PHP extensions, document root, HTTPS, file permissions, scheduled tasks, queue workers, and log locations.
+- Security settings, including authentication throttles, password rules, two-factor authentication, administrator flags, encrypted fields, CSRF protection, and audit logging.
+- User access configuration, including regular user, administrator, and super administrator roles and the routes available to each role.
+- Network settings, including the application URL, local development ports, DNS or hosting settings, firewall rules, and allowed administrative connections.
+
+The System Administrator owns the configuration baseline. Developers may propose changes through the repository, while the Project Owner or Faculty Adviser approves changes that affect security, data, production availability, or user access. Configuration changes must be tested before deployment, recorded with the date, reason, person responsible, affected environment, and rollback plan. Unauthorized direct edits to production files, database records, or environment variables are prohibited.
+
+Sensitive values such as APP_KEY, database passwords, OAuth credentials, and mail credentials must never be committed to Git or placed in public documentation. Each environment must use its own protected .env file or deployment secret store. The .env.example file may document variable names and safe defaults, but must not contain real secrets.
+
+Previous configurations are identified by Git commit, branch, release tag, migration history, deployment record, and configuration-change log. If a change causes failure, the administrator must first place the system in maintenance mode when necessary, preserve logs, restore the last approved code and configuration version, and verify the database and application health before reopening access. Database migrations must be reversible where practical and backups must be available before destructive changes.
+
+8.2 ENVIRONMENT CONFIGURATION
+
+| Environment | Purpose | Hardware and software | Database and network | Access restrictions | Responsible personnel |
+|---|---|---|---|---|---|
+| Development | Build features and investigate defects locally | Developer laptop or desktop; Windows or another supported OS; PHP 8.2+; Composer; Laravel 12; Node.js/npm; Vite; Git; local web server; SQLite or local MySQL | Local SQLite database or local MySQL database; localhost application URL; Vite development server on 127.0.0.1:5173 | Developers only; test accounts and non-production data; debug mode may be enabled locally | Development team and System Administrator |
+| Testing | Validate features, migrations, authentication, access control, and releases before deployment | Separate application copy using the project’s supported PHP, Composer, Node.js, and database versions; automated and manual test tools | Isolated test database seeded with dummy facilities and reservations; restricted network access; no production credentials | Project team and designated reviewer only; debug disabled when testing production-like behavior | System Administrator and Development Team |
+| Production | Provide the reservation service to intended campus users | Managed web server or approved hosting environment; PHP 8.2+; Laravel application; Composer production dependencies; compiled Vite assets; HTTPS; supported database | Dedicated production database; protected application URL; encrypted transport; restricted database and administrator connections; scheduled backups | Authenticated users access user features; administrators access approved portal; server and database access limited to authorized administrators | System Administrator, Project Owner, and approved hosting administrator |
+
+Environment values must not be copied blindly between environments. Development may use SQLite and local mail logging, while production should use protected mail delivery, APP_DEBUG=false, a production APP_ENV value, secure cookies, HTTPS, and a database with scheduled backups. Test data must not contain real personal information unless it has been formally authorized and protected.
+
+8.3 CONFIGURATION DOCUMENTATION REGISTER
+
+| Configuration item | Important settings | Responsible person | Documentation location | Update and review requirement |
+|---|---|---|---|---|
+| Application runtime | APP_ENV, APP_DEBUG, APP_URL, timezone, locale, APP_KEY handling | System Administrator | Protected deployment record and .env.example | Review every deployment and security change |
+| Database | Driver, path or host, database name, credentials, charset, migrations, indexes, backup target | System Administrator | Database configuration record and migration directory | Review before database changes and monthly |
+| PHP and Laravel dependencies | PHP version, composer.json, composer.lock, Laravel version, required extensions | Development Team | Repository manifests and release notes | Review on dependency updates |
+| Frontend build | Node.js/npm versions, package.json, package-lock.json, Vite inputs, Tailwind configuration | Development Team | Repository manifests and vite.config.js | Review when frontend dependencies or build inputs change |
+| Web server and files | Document root, HTTPS certificate, PHP runtime, permissions, logs, queue workers | Hosting/System Administrator | Deployment runbook and server record | Review after infrastructure changes and quarterly |
+| Authentication and security | Password rules, route throttles, two-factor settings, session lifetime, encryption controls | System Administrator | Security section of this plan and change log | Review each semester and after security incidents |
+| User access | Role flags, administrator approval, privileged routes, account register | System Administrator and Project Owner | Access register and RBAC matrix in Section 7 | Review each semester and after personnel changes |
+| Backup and recovery | Schedule, retention, storage location, restore procedure, test results | System Administrator | Backup and recovery log | Record every backup; test restoration at least each semester |
+| Network and service endpoints | Application URL, local ports, DNS, firewall rules, mail and OAuth callback URLs | Hosting/System Administrator | Network and deployment record | Review after hosting or endpoint changes |
+
+Documentation must state the current version, last reviewer, date changed, reason for change, and related Git commit or release tag. The documentation register is reviewed during the semesterly administration review and after a major incident.
+
+8.4 IT ASSET INVENTORY
+
+| Asset type | Asset or resource | Purpose | Location/environment | Responsible person |
+|---|---|---|---|---|
+| Hardware | Developer laptop or desktop | Write code, run the local Laravel application, build assets, and manage Git | Development | Assigned developer |
+| Hardware | Approved web server or hosting instance | Run the production Laravel application and compiled assets | Production | System Administrator or hosting administrator |
+| Hardware | Database storage or managed database service | Store users, facilities, reservations, notifications, and audit logs | Testing and Production | System Administrator |
+| Hardware | Backup storage | Store encrypted application and database backups | Protected backup location | System Administrator |
+| Network | Router, firewall, or hosting network controls | Restrict database and administrative access and support HTTPS traffic | Development, Testing, and Production | System or hosting administrator |
+| Software | Windows or supported developer operating system | Provide the local development environment | Development | Developer |
+| Software | PHP 8.2 or later | Execute Laravel application code | Development, Testing, and Production | System Administrator |
+| Software | Laravel 12 and Composer | Application framework and PHP dependency management | All environments | Development Team |
+| Software | SQLite or MySQL/MariaDB | Store application data according to environment requirements | Development, Testing, and Production | System Administrator |
+| Software | Node.js/npm, Vite, and Tailwind CSS | Compile frontend assets and support local development | Development and build process | Development Team |
+| Software | Git and GitHub repository | Track source code, configuration templates, reviews, and releases | All development work | Project Owner and Development Team |
+| Software | Web server and HTTPS certificate | Serve the application securely to users | Production | Hosting/System Administrator |
+| Software | Mail service or Laravel mail driver | Deliver password reset, OTP, and reservation notifications | Testing and Production | System Administrator |
+
+The inventory does not assume specialized hardware, mobile devices, printers, or IoT devices because Campus Reserve is a web application and does not require them for its core operation. Actual hostnames, serial numbers, license details, and service account identifiers should be added to the protected operational inventory after deployment.
+
+8.5 VERSION CONTROL OVERVIEW
+
+Git is the authoritative version-control system for Campus Reserve, and the project repository is hosted on GitHub. The repository stores application source code, database migrations, seeders, frontend source, configuration templates, documentation, and dependency lock files. It must not store .env files, passwords, encryption keys, database dumps containing personal data, or other secrets.
+
+The Project Owner controls repository membership and grants write access only to approved team members. Contributors work on feature or fix branches rather than editing the main branch directly. Each change must have a clear commit message describing the administrative or technical purpose. Pull requests or equivalent review are required for changes to authentication, roles, database migrations, deployment configuration, and other high-risk areas.
+
+The main branch represents the reviewed baseline. Releases are identified with version tags and a short release record containing the commit, migration status, environment changes, test result, deployment date, and rollback version. Previous versions can be identified through commit history, branches, tags, and GitHub’s pull-request review history. A release candidate must be tested in the testing environment before it is deployed to production.
+
+Unauthorized changes are prevented through private repository access, least-privilege permissions, protected main-branch rules where available, review requirements, secret scanning, and regular review of repository members. The System Administrator compares the deployed commit with the approved release tag and records any emergency change. Emergency changes must still be reviewed, documented, and reconciled with the repository afterward.
+
+CONCLUSION
+
+This portfolio builder extends the Campus Reserve System Administration Plan with configuration governance and operational reproducibility. Section 8 identifies the configuration baseline, separates development, testing, and production environments, defines a documentation register, inventories the realistic hardware and software assets, and establishes Git-based version-control practices. These controls complement the account and access procedures in Section 7 by ensuring that system changes are authorized, traceable, testable, and recoverable.
+
+---
+Prepared for: Campus Reserve System Administration Plan
+Prepared by: [Student Name]
+Course/Project: [Capstone / System Administration]
+Date: September 16, 2026

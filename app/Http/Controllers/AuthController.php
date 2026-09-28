@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Laravel\Socialite\Facades\Socialite;
@@ -589,6 +590,36 @@ class AuthController extends Controller
         return back()->with('status', $isChangingPassword ? 'Password changed successfully.' : 'Profile updated successfully.');
     }
 
+    public function uploadProfilePicture(Request $request)
+    {
+        $validated = $request->validate([
+            'profile_picture' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $user = Auth::user();
+        $previousPicture = $user->profile_picture;
+        $picturePath = $validated['profile_picture']->store('profile_pictures', 'public');
+
+        if (! $picturePath) {
+            return response()->json([
+                'message' => 'The profile picture could not be saved. Please try again.',
+            ], 500);
+        }
+
+        $user->update(['profile_picture' => $picturePath]);
+
+        if ($previousPicture
+            && str_starts_with($previousPicture, 'profile_pictures/')
+            && $previousPicture !== 'profile_pictures/default-avatar.png') {
+            Storage::disk('public')->delete($previousPicture);
+        }
+
+        return response()->json([
+            'status' => 'Profile picture uploaded successfully.',
+            'picture_url' => Storage::disk('public')->url($picturePath),
+        ]);
+    }
+
     private function profileValidationResponse(Request $request, string $field, string $message)
     {
         if ($request->expectsJson()) {
@@ -707,13 +738,26 @@ class AuthController extends Controller
         $otp = Otp::where('user_id', $userId)->latest()->first();
 
         if (! $user->two_fa_secret && (! $otp || $otp->isExpired())) {
-            $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left']);
+            $request->session()->forget([
+                'pending_2fa_user_id',
+                'pending_2fa_email',
+                'pending_2fa_method',
+                'pending_2fa_provider',
+                'pending_2fa_redirect',
+                'pending_google_2fa',
+                'show_2fa_modal',
+                'time_left',
+            ]);
             return redirect('/login')->with('error', '2FA code expired. Please login again.');
         }
 
-        $timeLeft = $user->two_fa_secret ? TOTP::createFromSecret($user->two_fa_secret)->expiresIn() : $otp->expires_at->diffInSeconds(now(), false);
+        $method = session('pending_2fa_method', $user->two_fa_secret ? 'authenticator' : 'email');
+        $provider = session('pending_2fa_provider');
+        $attemptsRemaining = $user->two_fa_secret
+            ? max(0, 3 - (int) session('authenticator_2fa_attempts', 0))
+            : max(0, 3 - (int) $otp->attempts);
 
-        return view('auth.2fa-verify', compact('timeLeft'));
+        return view('auth.2fa-verify', compact('method', 'provider', 'attemptsRemaining'));
     }
 
     /**
@@ -732,7 +776,7 @@ class AuthController extends Controller
         if ($user->two_fa_secret) {
             $attempts = (int) session('authenticator_2fa_attempts', 0);
             if ($attempts >= 3) {
-                $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'pending_2fa_method', 'authenticator_2fa_attempts']);
+                $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'pending_2fa_method', 'pending_2fa_provider', 'pending_2fa_redirect', 'pending_google_2fa', 'authenticator_2fa_attempts']);
                 if ($request->expectsJson()) {
                     return response()->json(['message' => 'Too many invalid authenticator codes. Please log in again.', 'redirect' => route('login')], 429);
                 }
@@ -742,7 +786,7 @@ class AuthController extends Controller
             if (! TOTP::createFromSecret($user->two_fa_secret)->verify($request->otp, null, 29)) {
                 $attempts++;
                 if ($attempts >= 3) {
-                    $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'pending_2fa_method', 'authenticator_2fa_attempts']);
+                    $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'pending_2fa_method', 'pending_2fa_provider', 'pending_2fa_redirect', 'pending_google_2fa', 'authenticator_2fa_attempts']);
                     if ($request->expectsJson()) {
                         return response()->json(['message' => 'Too many invalid authenticator codes. Please log in again.', 'redirect' => route('login')], 429);
                     }
@@ -759,14 +803,15 @@ class AuthController extends Controller
                 return back()->with(['show_2fa_modal' => true, 'two_fa_attempts_remaining' => 3 - $attempts])->withErrors(['otp' => 'Invalid Authenticator Code']);
             }
 
-            $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_2fa_method', 'authenticator_2fa_attempts']);
+            $redirectUrl = session()->pull('pending_2fa_redirect');
+            $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_2fa_method', 'pending_2fa_provider', 'pending_google_2fa', 'authenticator_2fa_attempts']);
             $isAdminLogin = session()->pull('pending_admin_2fa', false);
             Auth::login($user);
             $request->session()->regenerate();
             if ($request->expectsJson()) {
-                return response()->json(['redirect' => $isAdminLogin ? url('/admin/dashboard') : url('/reserve')]);
+                return response()->json(['redirect' => $redirectUrl ?? ($isAdminLogin ? url('/admin/dashboard') : url('/reserve'))]);
             }
-            return redirect($isAdminLogin ? '/admin/dashboard' : '/reserve');
+            return redirect($redirectUrl ?? ($isAdminLogin ? '/admin/dashboard' : '/reserve'));
         }
 
         if (! $otp || ! $otp->isValid()) {
@@ -778,13 +823,14 @@ class AuthController extends Controller
         if (Hash::check($request->otp, $otp->code)) {
             $otp->delete();
 
-            $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left']);
+            $redirectUrl = session()->pull('pending_2fa_redirect');
+            $request->session()->forget(['pending_2fa_user_id', 'pending_2fa_email', 'show_2fa_modal', 'time_left', 'pending_2fa_method', 'pending_2fa_provider', 'pending_google_2fa']);
             $isAdminLogin = session()->pull('pending_admin_2fa', false);
 
             Auth::login($user);
             $request->session()->regenerate();
 
-            $response = redirect($isAdminLogin ? '/admin/dashboard' : '/reserve');
+            $response = redirect($redirectUrl ?? ($isAdminLogin ? '/admin/dashboard' : '/reserve'));
             if (session()->pull('remember_device', false)) {
                 $response->withCookie($this->rememberDeviceCookie($user));
             }
@@ -862,7 +908,7 @@ class AuthController extends Controller
     /**
      * Handle Google OAuth callback
      */
-    public function handleGoogleCallback()
+    public function handleGoogleCallback(Request $request)
     {
         try {
             // Skip SSL checking for testing on localhost
@@ -889,13 +935,41 @@ class AuthController extends Controller
             ]);
         }
 
-        // Sign them in right away
+        if ($user->two_fa_enabled) {
+            try {
+                $this->prepareLoginTwoFactor($user);
+            } catch (\Exception $e) {
+                logger()->error('Google sign-in 2FA setup failed', [
+                    'user_id' => $user->id,
+                    'exception' => $e->getMessage(),
+                ]);
+
+                return redirect('/login')->withErrors([
+                    'email' => 'Unable to start two-factor verification. Please try again.',
+                ]);
+            }
+
+            $request->session()->put([
+                'pending_2fa_user_id' => $user->id,
+                'pending_2fa_email' => $user->email,
+                'pending_2fa_provider' => 'google',
+                'pending_2fa_redirect' => '/reserve',
+                'pending_google_2fa' => true,
+            ]);
+
+            return redirect()->route('2fa.show')->with(
+                'status',
+                session('pending_2fa_method') === 'authenticator'
+                    ? 'Google sign-in succeeded. Enter your Campus Reserve authenticator code to continue.'
+                    : 'Google sign-in succeeded. Enter the verification code sent to your email to continue.'
+            );
+        }
+
+        // Sign users without Campus Reserve two-factor authentication in directly.
         Auth::login($user);
-        $request = request();
         $request->session()->regenerate();
 
         return redirect('/reserve');
     }
 
 }
-

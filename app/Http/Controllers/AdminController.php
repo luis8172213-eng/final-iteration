@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Facility;
 use App\Models\Reservation;
 use App\Notifications\ReservationStatusChanged;
 use Illuminate\Http\Request;
@@ -51,7 +52,18 @@ class AdminController extends Controller
             ->get();
 
         $search = trim($request->get('search', ''));
+        $role = $request->validate([
+            'role' => ['nullable', 'in:all,user,admin,super_admin'],
+        ])['role'] ?? 'all';
         $users = \App\Models\User::query();
+
+        if ($role === 'user') {
+            $users->where('is_admin', false)->where('is_super_admin', false);
+        } elseif ($role === 'admin') {
+            $users->where('is_admin', true)->where('is_super_admin', false);
+        } elseif ($role === 'super_admin') {
+            $users->where('is_super_admin', true);
+        }
 
         if ($search !== '') {
             $users->where(function ($query) use ($search) {
@@ -65,7 +77,43 @@ class AdminController extends Controller
 
         $users = $users->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
-        return view('admin.dashboard', compact('pendingReservations', 'recentReservations', 'auditLogs', 'users', 'search'));
+        return view('admin.dashboard', compact('pendingReservations', 'recentReservations', 'auditLogs', 'users', 'search', 'role'));
+    }
+
+    public function createFacility()
+    {
+        $this->requireAdmin();
+
+        return view('admin.facilities.create');
+    }
+
+    public function storeFacility(Request $request)
+    {
+        $this->requireAdmin();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'building' => ['required', 'string', 'max:100'],
+            'type' => ['required', 'string', 'max:50'],
+            'capacity' => ['required', 'integer', 'min:1'],
+            'amenities' => ['nullable', 'string', 'max:2000'],
+            'requires_approval' => ['sometimes', 'boolean'],
+        ]);
+
+        $validated['requires_approval'] = $request->boolean('requires_approval');
+        $validated['amenities'] = isset($validated['amenities'])
+            ? array_values(array_filter(array_map('trim', explode(',', $validated['amenities']))))
+            : null;
+        $facility = Facility::create($validated);
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'reservation_id' => null,
+            'action' => 'facility_created',
+            'details' => "Created facility {$facility->name} in {$facility->building}.",
+        ]);
+
+        return redirect()->route('admin.dashboard')->with('status', 'Facility created successfully.');
     }
 
     public function approve(Request $request, Reservation $reservation)
@@ -163,7 +211,11 @@ class AdminController extends Controller
         $this->requireSuperAdmin();
 
         if ($user->isSuperAdmin()) {
-            return back()->with('error', 'Cannot change head admin role.');
+            return redirect()->route('admin.dashboard', [
+                'search' => $request->input('return_search'),
+                'role' => $request->input('return_role'),
+            ])
+                ->with('error', 'Cannot change head admin role.');
         }
 
         $request->validate([
@@ -181,7 +233,11 @@ class AdminController extends Controller
             'details' => sprintf('Changed role for user %s to %s', $user->email, $request->input('role')),
         ]);
 
-        return back()->with('status', 'User role updated successfully.');
+        return redirect()->route('admin.dashboard', [
+            'search' => $request->input('return_search'),
+            'role' => $request->input('return_role'),
+        ])
+            ->with('status', 'User role updated successfully.');
     }
 
     public function destroyUser(Request $request, \App\Models\User $user)
@@ -190,11 +246,19 @@ class AdminController extends Controller
         $this->requireSuperAdmin();
 
         if ($user->isSuperAdmin()) {
-            return back()->with('error', 'Cannot delete the head admin account.');
+            return redirect()->route('admin.dashboard', [
+                'search' => $request->input('return_search'),
+                'role' => $request->input('return_role'),
+            ])
+                ->with('error', 'Cannot delete the head admin account.');
         }
 
         if ($user->id === Auth::id()) {
-            return back()->with('error', 'You cannot delete your own account here.');
+            return redirect()->route('admin.dashboard', [
+                'search' => $request->input('return_search'),
+                'role' => $request->input('return_role'),
+            ])
+                ->with('error', 'You cannot delete your own account here.');
         }
 
         $user->delete();
@@ -206,6 +270,10 @@ class AdminController extends Controller
             'details' => sprintf('Deleted user %s', $user->email),
         ]);
 
-        return back()->with('status', 'User deleted successfully.');
+        return redirect()->route('admin.dashboard', [
+            'search' => $request->input('return_search'),
+            'role' => $request->input('return_role'),
+        ])
+            ->with('status', 'User deleted successfully.');
     }
 }

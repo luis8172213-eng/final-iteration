@@ -11,7 +11,7 @@
             <div>
                 <p class="text-sm uppercase tracking-[0.3em] text-slate-500 mb-4">Contact Us</p>
                 <h1 class="text-5xl font-semibold text-slate-800 leading-tight mb-6">Get in touch with the Campus Reserve team.</h1>
-                <p class="text-lg leading-8 text-slate-600 mb-8">Have questions about reservations, access, or campus scheduling? Use the form to send us a message and we'll get back to you soon. This is a placeholder contact page designed for demo and future enhancements.</p>
+                <p class="text-lg leading-8 text-slate-600 mb-8">Have questions about reservations, account access, or campus scheduling? Find our campus location below or prepare a message for the Campus Reserve team.</p>
 
                 <div class="space-y-6">
                     <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -26,7 +26,7 @@
             <div class="rounded-4xl border border-slate-200 bg-white p-8 shadow-2xl">
                 <div class="mb-8">
                     <p class="text-sm uppercase tracking-[0.3em] text-slate-500">Send a message</p>
-                    <h2 class="text-3xl font-semibold text-slate-800 mt-4">Placeholder contact form</h2>
+                    <h2 class="text-3xl font-semibold text-slate-800 mt-4">How can we help?</h2>
                 </div>
 
                 <form class="space-y-6">

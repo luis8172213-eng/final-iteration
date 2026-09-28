@@ -12,8 +12,10 @@
                     <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
                     <p class="mt-2 text-gray-600">Approve or reject reservations, manage members, and review audit activity.</p>
                 </div>
-                <a href="/reserve" class="inline-flex items-center px-4 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors">Back to User Portal</a>
-                <a href="{{ route('debug.decrypt.form') }}" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors">🔐 Decrypt Utility</a>
+                <div class="flex flex-wrap items-center gap-3">
+                    <a href="{{ route('admin.facilities.create') }}" class="inline-flex items-center px-4 py-2 bg-green-700 text-white rounded-full hover:bg-green-800 transition-colors">Add Facility</a>
+                    <a href="/reserve" class="inline-flex items-center px-4 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors">Back to User Portal</a>
+                </div>
             </div>
         </div>
 
@@ -56,7 +58,7 @@
                 @if($pendingReservations->isEmpty())
                     <p class="text-gray-500">No pending reservations at the moment.</p>
                 @else
-                    <div class="space-y-4">
+                    <div class="space-y-4 pr-2" style="height: 32rem; overflow-y: scroll; scrollbar-width: auto; scrollbar-color: #6b7280 #e5e7eb;" tabindex="0" aria-label="Scrollable pending reservations">
                         @foreach($pendingReservations as $reservation)
                             <div class="border border-gray-200 rounded-3xl p-4">
                                 <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
@@ -92,13 +94,13 @@
             <section class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
                 <div class="mb-4">
                     <h2 class="text-xl font-semibold text-gray-900">Audit Log</h2>
-                    <p class="text-sm text-gray-600">Track when admins approved or rejected reservations.</p>
+                    <p class="text-sm text-gray-600">Track administrator actions and reservation activity.</p>
                 </div>
 
                 @if($auditLogs->isEmpty())
                     <p class="text-gray-500">No audit log entries yet.</p>
                 @else
-                    <div class="space-y-4">
+                    <div class="space-y-4 pr-2" style="height: 32rem; overflow-y: scroll; scrollbar-width: auto; scrollbar-color: #6b7280 #e5e7eb;" tabindex="0" aria-label="Scrollable audit log entries">
                         @foreach($auditLogs as $log)
                             <div class="rounded-3xl border border-gray-200 p-4 bg-gray-50">
                                 <div class="flex items-start justify-between gap-4">
@@ -125,10 +127,17 @@
                     <h2 class="text-xl font-semibold text-gray-900">Member Management</h2>
                     <p class="text-sm text-gray-600">Search members and update admin access.</p>
                 </div>
-                <form method="GET" action="{{ route('admin.dashboard') }}" class="w-full sm:w-auto">
-                    <label class="sr-only" for="search">Search members</label>
+                <form method="GET" action="{{ route('admin.dashboard') }}" class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                    <label class="sr-only" for="role-filter">Filter members by role</label>
+                    <select id="role-filter" name="role" onchange="this.form.submit()" class="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-black focus:outline-none focus:ring-1 focus:ring-black">
+                        <option value="all" {{ ($role ?? 'all') === 'all' ? 'selected' : '' }}>All roles</option>
+                        <option value="user" {{ ($role ?? '') === 'user' ? 'selected' : '' }}>Members only</option>
+                        <option value="admin" {{ ($role ?? '') === 'admin' ? 'selected' : '' }}>Admins only</option>
+                        <option value="super_admin" {{ ($role ?? '') === 'super_admin' ? 'selected' : '' }}>Head admins only</option>
+                    </select>
                     <div class="relative">
-                        <input id="search" name="search" type="text" value="{{ $search ?? '' }}" placeholder="Search name or email" class="w-full sm:w-80 rounded-full border border-gray-300 bg-gray-50 py-2 pl-4 pr-10 text-sm focus:border-black focus:ring-black" />
+                        <label class="sr-only" for="search">Search members</label>
+                        <input id="search" name="search" type="text" value="{{ $search ?? '' }}" placeholder="Search name or email" class="w-full rounded-full border border-gray-300 bg-gray-50 py-2 pl-4 pr-20 text-sm focus:border-black focus:ring-black sm:w-80" />
                         <button type="submit" class="absolute inset-y-0 right-0 inline-flex items-center pr-4 text-gray-500 hover:text-gray-900">Search</button>
                     </div>
                 </form>
@@ -137,9 +146,9 @@
             @if($users->isEmpty())
                 <p class="text-gray-500">No users found.</p>
             @else
-                <div class="overflow-hidden rounded-3xl border border-gray-200">
+                <div class="rounded-3xl border border-gray-200" style="height: 32rem; overflow: auto; scrollbar-width: auto; scrollbar-color: #6b7280 #e5e7eb;" tabindex="0" aria-label="Scrollable member list">
                     <table class="min-w-full divide-y divide-gray-200 bg-white">
-                        <thead class="bg-gray-50">
+                        <thead class="sticky top-0 z-10 bg-gray-50">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Name</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Email</th>
@@ -167,6 +176,8 @@
                                         @if(! $user->isSuperAdmin())
                                             <form method="POST" action="{{ route('admin.users.role', $user) }}" class="inline-flex">
                                                 @csrf
+                                                <input type="hidden" name="return_search" value="{{ $search ?? '' }}">
+                                                <input type="hidden" name="return_role" value="{{ $role ?? 'all' }}">
                                                 <select name="role" class="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-black">
                                                     <option value="user" {{ ! $user->is_admin ? 'selected' : '' }}>Member</option>
                                                     <option value="admin" {{ $user->is_admin ? 'selected' : '' }}>Admin</option>
@@ -176,6 +187,8 @@
                                             <form method="POST" action="{{ route('admin.users.destroy', $user) }}" class="inline-flex" onsubmit="return confirm('Delete this user? This cannot be undone.');">
                                                 @csrf
                                                 @method('DELETE')
+                                                <input type="hidden" name="return_search" value="{{ $search ?? '' }}">
+                                                <input type="hidden" name="return_role" value="{{ $role ?? 'all' }}">
                                                 <button type="submit" class="rounded-full bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 transition">Delete</button>
                                             </form>
                                         @else
